@@ -1,4 +1,4 @@
-import { Users, Plus, Search, Filter } from 'lucide-react';
+import { Users, Plus, Search } from 'lucide-react';
 import { BottomNav } from '@/components/BottomNav';
 import { useCustomers } from '@/hooks/useCustomers';
 import { CustomerFormDialog } from '@/components/CustomerFormDialog';
@@ -14,33 +14,23 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
 
 type Customer = Database['public']['Tables']['customers']['Row'];
 
 const Customers = () => {
     const { customers, loading } = useCustomers();
     const [searchQuery, setSearchQuery] = useState('');
-    const [filterType, setFilterType] = useState<'all' | 'customer' | 'partner'>('all');
     const [dialogOpen, setDialogOpen] = useState(false);
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
 
-    // Filter customers based on search and type
+    // Filter customers based on search only
     const filteredCustomers = customers.filter(customer => {
         const matchesSearch = customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             customer.phone?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             customer.email?.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesType = filterType === 'all' || customer.type === filterType;
         const isActive = customer.is_active;
 
-        return matchesSearch && matchesType && isActive;
+        return matchesSearch && isActive;
     });
 
     const handleAddNew = () => {
@@ -62,7 +52,7 @@ const Customers = () => {
                         <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
                             <Users className="h-5 w-5 text-primary" />
                         </div>
-                        <h1 className="text-xl font-bold text-foreground">Khách hàng</h1>
+                        <h1 className="text-xl font-bold text-foreground">Mối hàng</h1>
                     </div>
                     <Button size="sm" className="gap-2" onClick={handleAddNew}>
                         <Plus className="h-4 w-4" />
@@ -70,8 +60,8 @@ const Customers = () => {
                     </Button>
                 </div>
 
-                {/* Search and Filter */}
-                <div className="space-y-3 mb-6">
+                {/* Search */}
+                <div className="mb-6">
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
@@ -81,42 +71,14 @@ const Customers = () => {
                             className="pl-10"
                         />
                     </div>
-
-                    <div className="flex items-center gap-2">
-                        <Filter className="h-4 w-4 text-muted-foreground" />
-                        <Select value={filterType} onValueChange={(value: any) => setFilterType(value)}>
-                            <SelectTrigger className="w-[180px]">
-                                <SelectValue placeholder="Lọc theo loại" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">Tất cả</SelectItem>
-                                <SelectItem value="customer">Khách hàng</SelectItem>
-                                <SelectItem value="partner">Đối tác</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
                 </div>
 
-                {/* Stats Cards */}
-                <div className="grid grid-cols-3 gap-3 mb-6">
-                    <div className="bg-card rounded-lg p-3 border">
-                        <p className="text-xs text-muted-foreground mb-1">Tổng số</p>
-                        <p className="text-lg font-bold text-foreground">
-                            {customers.filter(c => c.is_active).length}
-                        </p>
-                    </div>
-                    <div className="bg-card rounded-lg p-3 border">
-                        <p className="text-xs text-muted-foreground mb-1">Khách hàng</p>
-                        <p className="text-lg font-bold text-blue-600">
-                            {customers.filter(c => c.is_active && c.type === 'customer').length}
-                        </p>
-                    </div>
-                    <div className="bg-card rounded-lg p-3 border">
-                        <p className="text-xs text-muted-foreground mb-1">Đối tác</p>
-                        <p className="text-lg font-bold text-green-600">
-                            {customers.filter(c => c.is_active && c.type === 'partner').length}
-                        </p>
-                    </div>
+                {/* Stats Card */}
+                <div className="bg-card rounded-lg p-4 border mb-6">
+                    <p className="text-sm text-muted-foreground mb-1">Tổng số mối hàng</p>
+                    <p className="text-3xl font-bold text-primary">
+                        {customers.filter(c => c.is_active).length}
+                    </p>
                 </div>
 
                 {/* Customer List */}
@@ -128,12 +90,12 @@ const Customers = () => {
                     <div className="flex flex-col items-center justify-center py-12 text-center">
                         <Users className="h-12 w-12 text-muted-foreground/50 mb-3" />
                         <p className="text-muted-foreground">
-                            {searchQuery || filterType !== 'all'
-                                ? 'Không tìm thấy khách hàng phù hợp'
-                                : 'Chưa có khách hàng nào'}
+                            {searchQuery
+                                ? 'Không tìm thấy mối hàng phù hợp'
+                                : 'Chưa có mối hàng nào'}
                         </p>
                         <p className="text-sm text-muted-foreground/70 mt-1">
-                            Nhấn "Thêm mới" để tạo khách hàng đầu tiên
+                            Nhấn "Thêm mới" để tạo mối hàng đầu tiên
                         </p>
                     </div>
                 ) : (
@@ -142,7 +104,6 @@ const Customers = () => {
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Tên</TableHead>
-                                    <TableHead>Loại</TableHead>
                                     <TableHead>Liên hệ</TableHead>
                                     <TableHead className="text-right">Thao tác</TableHead>
                                 </TableRow>
@@ -154,22 +115,17 @@ const Customers = () => {
                                             <div>
                                                 <p className="font-semibold">{customer.name}</p>
                                                 {customer.address && (
-                                                    <p className="text-xs text-muted-foreground truncate max-w-[150px]">
+                                                    <p className="text-xs text-muted-foreground truncate max-w-[200px]">
                                                         {customer.address}
                                                     </p>
                                                 )}
                                             </div>
                                         </TableCell>
                                         <TableCell>
-                                            <Badge variant={customer.type === 'customer' ? 'default' : 'secondary'}>
-                                                {customer.type === 'customer' ? 'Khách hàng' : 'Đối tác'}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell>
                                             <div className="text-sm">
                                                 {customer.phone && <p>{customer.phone}</p>}
                                                 {customer.email && (
-                                                    <p className="text-xs text-muted-foreground truncate max-w-[120px]">
+                                                    <p className="text-xs text-muted-foreground truncate max-w-[150px]">
                                                         {customer.email}
                                                     </p>
                                                 )}

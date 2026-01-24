@@ -4,7 +4,7 @@ import { NavLink } from './NavLink';
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Tổng quan' },
   { to: '/thong-ke', icon: BarChart3, label: 'Thống kê' },
-  { to: '/khach-hang', icon: Users, label: 'Khách hàng' },
+  { to: '/khach-hang', icon: Users, label: 'Mối hàng' },
   { to: '/may-tinh', icon: Calculator, label: 'Máy tính' },
 ];
 
