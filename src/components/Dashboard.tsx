@@ -130,7 +130,7 @@ export const Dashboard = ({ recentTransactions, onNewTransaction, loading }: Das
         {/* Header */}
         <div className="text-center mb-8 pt-4">
           <div className="text-5xl mb-3">🌾</div>
-          <h1 className="text-3xl font-bold text-foreground">RiceWeigh Pro</h1>
+          <h1 className="text-3xl font-bold text-foreground">Xưởng Gạo Hà Toản</h1>
           <p className="text-muted-foreground mt-1">Quản lý cân gạo thông minh</p>
         </div>
 
