@@ -258,11 +258,55 @@ export const useTransaction = () => {
   const cancelTransaction = useCallback(async () => {
     if (!currentTransaction) return;
 
-    // If it's a new transaction with no weights, maybe delete it?
-    // For now, just clear local state and mark as "cancelled" is not in schema
-    // Let's just clear selection.
-    setCurrentTransaction(null);
-  }, [currentTransaction]);
+    try {
+      console.log('Canceling transaction:', currentTransaction.id);
+
+      // Delete weighing details first (foreign key constraint)
+      if (currentTransaction.weights.length > 0) {
+        const { error: weightsError } = await supabase
+          .from('weighing_details')
+          .delete()
+          .eq('transaction_id', currentTransaction.id);
+
+        if (weightsError) {
+          console.error('Failed to delete weighing details:', weightsError);
+        }
+      }
+
+      // Delete rice batches
+      if (currentTransaction.riceBatches.length > 0) {
+        const { error: batchesError } = await supabase
+          .from('rice_batches')
+          .delete()
+          .eq('transaction_id', currentTransaction.id);
+
+        if (batchesError) {
+          console.error('Failed to delete rice batches:', batchesError);
+        }
+      }
+
+      // Delete the transaction itself
+      const { error: transactionError } = await supabase
+        .from('transactions')
+        .delete()
+        .eq('id', currentTransaction.id);
+
+      if (transactionError) {
+        console.error('Failed to delete transaction:', transactionError);
+        throw transactionError;
+      }
+
+      console.log('Transaction deleted successfully');
+      setCurrentTransaction(null);
+
+      // Refresh transactions list
+      await fetchTransactions();
+    } catch (e) {
+      console.error('Failed to cancel transaction:', e);
+      // Still clear local state even if delete fails
+      setCurrentTransaction(null);
+    }
+  }, [currentTransaction, fetchTransactions]);
 
   const summary: TransactionSummary = useMemo(() => {
     if (!currentTransaction) {
