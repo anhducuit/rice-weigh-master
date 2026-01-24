@@ -38,6 +38,8 @@ export const useTransaction = () => {
           batchOrder: b.batch_order
         })).sort((a: any, b: any) => a.batchOrder - b.batchOrder),
         status: t.status,
+        paymentStatus: t.payment_status || 'unpaid',
+        paymentDate: t.payment_date ? new Date(t.payment_date) : null,
         weights: (t.weights || []).map((w: any) => ({
           id: w.id,
           weight: Number(w.weight),
@@ -123,6 +125,8 @@ export const useTransaction = () => {
         })).sort((a, b) => a.batchOrder - b.batchOrder),
         weights: [],
         status: 'pending',
+        paymentStatus: 'unpaid',
+        paymentDate: null,
       };
 
       setCurrentTransaction(newTransaction);
@@ -354,5 +358,6 @@ export const useTransaction = () => {
     deleteWeight,
     completeTransaction,
     cancelTransaction,
+    refreshTransactions: fetchTransactions,
   };
 };

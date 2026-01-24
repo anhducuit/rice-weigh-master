@@ -19,6 +19,8 @@ export interface Database {
                     unit_price: number
                     status: 'pending' | 'completed'
                     customer_id: string | null
+                    payment_status: 'unpaid' | 'paid'
+                    payment_date: string | null
                 }
                 Insert: {
                     id?: string
@@ -29,6 +31,8 @@ export interface Database {
                     unit_price: number
                     status?: 'pending' | 'completed'
                     customer_id?: string | null
+                    payment_status?: 'unpaid' | 'paid'
+                    payment_date?: string | null
                 }
                 Update: {
                     id?: string
@@ -39,6 +43,8 @@ export interface Database {
                     unit_price?: number
                     status?: 'pending' | 'completed'
                     customer_id?: string | null
+                    payment_status?: 'unpaid' | 'paid'
+                    payment_date?: string | null
                 }
             }
             weighing_details: {

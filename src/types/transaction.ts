@@ -22,6 +22,8 @@ export interface Transaction {
   riceBatches: RiceBatch[]; // New: array of rice batches
   weights: WeighingDetail[];
   status: 'pending' | 'completed';
+  paymentStatus: 'unpaid' | 'paid';
+  paymentDate: Date | null;
 }
 
 export interface TransactionSummary {
