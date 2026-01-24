@@ -17,11 +17,38 @@ export const WeightInput = ({ onAddWeight }: WeightInputProps) => {
 
   const handleSubmit = () => {
     const weight = parseFloat(value);
-    if (weight > 0) {
+    if (weight > 0 && weight <= 100) {
       onAddWeight(weight);
       setValue('');
       // Re-focus for next input
       setTimeout(() => inputRef.current?.focus(), 50);
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.replace(/[^0-9]/g, ''); // Only numbers
+
+    if (val.length === 0) {
+      setValue('');
+      return;
+    }
+
+    // Convert to decimal: 501 -> 50.1, 500 -> 50.0, 50 -> 5.0, 5 -> 0.5
+    const numValue = parseInt(val);
+    const decimalValue = numValue / 10;
+
+    // Only accept values <= 100kg
+    if (decimalValue <= 100) {
+      setValue(decimalValue.toString());
+
+      // Auto-submit when we have a valid 3-digit number (e.g., 501, 500, 485)
+      if (val.length === 3 && decimalValue > 0) {
+        setTimeout(() => {
+          onAddWeight(decimalValue);
+          setValue('');
+          inputRef.current?.focus();
+        }, 100);
+      }
     }
   };
 
@@ -32,7 +59,7 @@ export const WeightInput = ({ onAddWeight }: WeightInputProps) => {
     }
   };
 
-  const isValid = parseFloat(value) > 0;
+  const isValid = parseFloat(value) > 0 && parseFloat(value) <= 100;
 
   return (
     <div className="space-y-3">
@@ -44,12 +71,9 @@ export const WeightInput = ({ onAddWeight }: WeightInputProps) => {
           <input
             ref={inputRef}
             type="text"
-            inputMode="decimal"
+            inputMode="numeric"
             value={value}
-            onChange={(e) => {
-              const val = e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.');
-              setValue(val);
-            }}
+            onChange={handleChange}
             onKeyDown={handleKeyDown}
             placeholder="0.0"
             className={`weight-input w-full h-20 px-6 ${value ? 'input-active' : ''}`}
@@ -73,7 +97,7 @@ export const WeightInput = ({ onAddWeight }: WeightInputProps) => {
         </Button>
       </div>
       <p className="text-xs text-muted-foreground text-center">
-        Nhấn Enter hoặc nút "Lên xe" để thêm số cân
+        Nhập 3 số sẽ tự động lên xe (VD: 501 = 50.1kg, 500 = 50kg)
       </p>
     </div>
   );

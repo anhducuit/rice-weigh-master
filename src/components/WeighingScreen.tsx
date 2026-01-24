@@ -154,16 +154,31 @@ export const WeighingScreen = ({
               {transaction.customerName} • {headerText}
             </p>
           </div>
-          <Button
-            variant="success"
-            size="sm"
-            onClick={handleComplete}
-            disabled={summary.totalBags === 0}
-            className="gap-1"
-          >
-            <Check className="w-4 h-4" />
-            Xong
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (window.confirm('Bạn có chắc chắn muốn hủy chuyến xe này? Dữ liệu sẽ bị mất.')) {
+                  onCancel();
+                }
+              }}
+              className="gap-1"
+            >
+              <X className="w-4 h-4" />
+              Hủy
+            </Button>
+            <Button
+              variant="success"
+              size="sm"
+              onClick={handleComplete}
+              disabled={summary.totalBags === 0}
+              className="gap-1"
+            >
+              <Check className="w-4 h-4" />
+              Xong
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -187,8 +202,8 @@ export const WeighingScreen = ({
                     key={batch.id}
                     onClick={() => setSelectedBatchId(batch.id)}
                     className={`p-3 rounded-xl border-2 transition-all text-left ${isSelected
-                        ? 'border-primary bg-primary/10'
-                        : 'border-border bg-card hover:border-primary/50'
+                      ? 'border-primary bg-primary/10'
+                      : 'border-border bg-card hover:border-primary/50'
                       }`}
                   >
                     <p className="font-medium text-sm">{batch.riceType}</p>

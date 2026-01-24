@@ -24,21 +24,21 @@ export const StickyFooter = ({ summary }: StickyFooterProps) => {
           {summary.batchSummaries!.map((batch) => (
             <div
               key={batch.batchId}
-              className="bg-background/50 rounded-lg p-2 grid grid-cols-4 gap-2 text-xs"
+              className="bg-card border border-border rounded-lg p-2 grid grid-cols-4 gap-2 text-xs"
             >
               <div className="col-span-2">
-                <p className="font-medium truncate">{batch.riceType}</p>
+                <p className="font-medium truncate text-foreground">{batch.riceType}</p>
                 <p className="text-muted-foreground">
                   {batch.unitPrice.toLocaleString('vi-VN')} đ/kg
                 </p>
               </div>
               <div className="text-center">
                 <p className="text-muted-foreground">Bao</p>
-                <p className="font-bold">{batch.bags}</p>
+                <p className="font-bold text-foreground">{batch.bags}</p>
               </div>
               <div className="text-right">
                 <p className="text-muted-foreground">Tiền</p>
-                <p className="font-bold">{(batch.amount / 1000).toFixed(0)}k</p>
+                <p className="font-bold text-foreground">{(batch.amount / 1000).toFixed(0)}k</p>
               </div>
             </div>
           ))}
