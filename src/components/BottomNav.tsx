@@ -1,10 +1,10 @@
-import { LayoutDashboard, BarChart3, Wallet, Calculator } from 'lucide-react';
+import { LayoutDashboard, BarChart3, Users, Calculator } from 'lucide-react';
 import { NavLink } from './NavLink';
 
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Tổng quan' },
   { to: '/thong-ke', icon: BarChart3, label: 'Thống kê' },
-  { to: '/thu-chi', icon: Wallet, label: 'Thu chi' },
+  { to: '/khach-hang', icon: Users, label: 'Khách hàng' },
   { to: '/may-tinh', icon: Calculator, label: 'Máy tính' },
 ];
 

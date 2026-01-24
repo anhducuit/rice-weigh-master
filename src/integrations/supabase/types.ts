@@ -18,6 +18,7 @@ export interface Database {
                     rice_type: string
                     unit_price: number
                     status: 'pending' | 'completed'
+                    customer_id: string | null
                 }
                 Insert: {
                     id?: string
@@ -27,15 +28,17 @@ export interface Database {
                     rice_type: string
                     unit_price: number
                     status?: 'pending' | 'completed'
+                    customer_id?: string | null
                 }
                 Update: {
                     id?: string
                     created_at?: string
-                    customer_name: string
-                    license_plate: string
-                    rice_type: string
-                    unit_price: number
+                    customer_name?: string
+                    license_plate?: string
+                    rice_type?: string
+                    unit_price?: number
                     status?: 'pending' | 'completed'
+                    customer_id?: string | null
                 }
             }
             weighing_details: {
@@ -59,6 +62,44 @@ export interface Database {
                     weight?: number
                     order_index?: number
                     created_at?: string
+                }
+            }
+            customers: {
+                Row: {
+                    id: string
+                    created_at: string
+                    updated_at: string
+                    name: string
+                    phone: string | null
+                    email: string | null
+                    address: string | null
+                    type: 'customer' | 'partner'
+                    notes: string | null
+                    is_active: boolean
+                }
+                Insert: {
+                    id?: string
+                    created_at?: string
+                    updated_at?: string
+                    name: string
+                    phone?: string | null
+                    email?: string | null
+                    address?: string | null
+                    type?: 'customer' | 'partner'
+                    notes?: string | null
+                    is_active?: boolean
+                }
+                Update: {
+                    id?: string
+                    created_at?: string
+                    updated_at?: string
+                    name?: string
+                    phone?: string | null
+                    email?: string | null
+                    address?: string | null
+                    type?: 'customer' | 'partner'
+                    notes?: string | null
+                    is_active?: boolean
                 }
             }
         }
