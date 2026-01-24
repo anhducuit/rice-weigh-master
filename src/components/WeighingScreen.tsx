@@ -48,37 +48,67 @@ export const WeighingScreen = ({
 
     setIsSharing(true);
     try {
+      // Generate image with optimized quality for sharing
       const dataUrl = await toPng(invoiceRef.current, {
-        quality: 0.95,
+        quality: 0.8, // Reduced for smaller file size
         backgroundColor: '#ffffff',
+        pixelRatio: 2, // Good quality for mobile
       });
 
       // Convert to blob
       const response = await fetch(dataUrl);
       const blob = await response.blob();
-      const file = new File([blob], `phieu-can-${transaction.licensePlate}.png`, {
+
+      // Check file size (warn if > 5MB)
+      if (blob.size > 5 * 1024 * 1024) {
+        console.warn('Image size is large:', (blob.size / 1024 / 1024).toFixed(2), 'MB');
+      }
+
+      const fileName = `phieu-can-${transaction.licensePlate}-${Date.now()}.png`;
+      const file = new File([blob], fileName, {
         type: 'image/png',
       });
 
-      // Use Web Share API
-      if (navigator.share && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: `Phiếu cân - ${transaction.licensePlate}`,
-          text: `Phiếu cân gạo xe ${transaction.licensePlate}`,
-        });
+      // Try Web Share API first (works on mobile)
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({
+            files: [file],
+            title: `Phiếu cân - ${transaction.licensePlate}`,
+            text: `Phiếu cân gạo xe ${transaction.licensePlate}\nTổng: ${summary.totalBags} bao - ${summary.totalWeight.toFixed(1)} kg`,
+          });
+          console.log('Share successful');
+        } catch (shareError: any) {
+          // User cancelled or share failed
+          if (shareError.name === 'AbortError') {
+            console.log('Share cancelled by user');
+          } else {
+            console.error('Share error:', shareError);
+            // Fallback to download
+            downloadImage(dataUrl, fileName);
+          }
+        }
       } else {
-        // Fallback: Download the image
-        const link = document.createElement('a');
-        link.href = dataUrl;
-        link.download = `phieu-can-${transaction.licensePlate}.png`;
-        link.click();
+        // Browser doesn't support Web Share API - download instead
+        console.log('Web Share API not supported, downloading instead');
+        downloadImage(dataUrl, fileName);
       }
     } catch (error) {
-      console.error('Share failed:', error);
+      console.error('Failed to generate image:', error);
+      alert('Không thể tạo ảnh. Vui lòng thử lại.');
     } finally {
       setIsSharing(false);
     }
+  };
+
+  const downloadImage = (dataUrl: string, fileName: string) => {
+    const link = document.createElement('a');
+    link.href = dataUrl;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    console.log('Image downloaded:', fileName);
   };
 
   const handleConfirmComplete = () => {
