@@ -1,6 +1,7 @@
-import { Plus, Clock, Truck, ChevronRight } from 'lucide-react';
+import { Plus, Clock, Truck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Transaction } from '@/types/transaction';
+import { BottomNav } from './BottomNav';
 
 interface DashboardProps {
   recentTransactions: Transaction[];
@@ -33,7 +34,7 @@ const formatDate = (date: Date) => {
 
 export const Dashboard = ({ recentTransactions, onNewTransaction }: DashboardProps) => {
   return (
-    <div className="min-h-screen p-4 pb-8 animate-fade-in">
+    <div className="min-h-screen p-4 pb-24 animate-fade-in">
       {/* Header */}
       <div className="text-center mb-8 pt-4">
         <div className="text-5xl mb-3">🌾</div>
@@ -123,6 +124,7 @@ export const Dashboard = ({ recentTransactions, onNewTransaction }: DashboardPro
           </div>
         )}
       </div>
+      <BottomNav />
     </div>
   );
 };
