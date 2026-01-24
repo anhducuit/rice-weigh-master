@@ -18,6 +18,7 @@ const Index = () => {
     deleteWeight,
     completeTransaction,
     cancelTransaction,
+    loading,
   } = useTransaction();
 
   const handleNewTransaction = () => {
@@ -74,6 +75,7 @@ const Index = () => {
     <Dashboard
       recentTransactions={recentTransactions}
       onNewTransaction={handleNewTransaction}
+      loading={loading}
     />
   );
 };

@@ -6,6 +6,7 @@ import { BottomNav } from './BottomNav';
 interface DashboardProps {
   recentTransactions: Transaction[];
   onNewTransaction: () => void;
+  loading?: boolean;
 }
 
 const formatCurrency = (amount: number) => {
@@ -32,7 +33,15 @@ const formatDate = (date: Date) => {
   }).format(date);
 };
 
-export const Dashboard = ({ recentTransactions, onNewTransaction }: DashboardProps) => {
+export const Dashboard = ({ recentTransactions, onNewTransaction, loading }: DashboardProps) => {
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen p-4 pb-24 animate-fade-in">
       {/* Header */}
@@ -89,11 +98,10 @@ export const Dashboard = ({ recentTransactions, onNewTransaction }: DashboardPro
                         {tx.licensePlate}
                       </p>
                       <span
-                        className={`text-2xs px-2 py-0.5 rounded-full ${
-                          tx.status === 'completed'
+                        className={`text-2xs px-2 py-0.5 rounded-full ${tx.status === 'completed'
                             ? 'bg-success/20 text-success'
                             : 'bg-warning/20 text-warning'
-                        }`}
+                          }`}
                       >
                         {tx.status === 'completed' ? 'Xong' : 'Đang cân'}
                       </span>
