@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { Transaction, WeighingDetail, TransactionFormData, TransactionSummary } from '@/types/transaction';
+import { Transaction, WeighingDetail, TransactionFormData, TransactionSummary, RiceBatch, BatchSummary } from '@/types/transaction';
 import { supabase } from '@/integrations/supabase/client';
 
 const STORAGE_KEY = 'riceweigh_transactions';
@@ -17,7 +17,8 @@ export const useTransaction = () => {
         .from('transactions')
         .select(`
           *,
-          weights:weighing_details(*)
+          weights:weighing_details(*),
+          riceBatches:rice_batches(*)
         `)
         .order('created_at', { ascending: false });
 
@@ -28,13 +29,20 @@ export const useTransaction = () => {
         createdAt: new Date(t.created_at),
         customerName: t.customer_name,
         licensePlate: t.license_plate,
-        riceType: t.rice_type,
-        unitPrice: Number(t.unit_price),
+        riceType: t.rice_type || '', // Deprecated field
+        unitPrice: Number(t.unit_price) || 0, // Deprecated field
+        riceBatches: (t.riceBatches || []).map((b: any) => ({
+          id: b.id,
+          riceType: b.rice_type,
+          unitPrice: Number(b.unit_price),
+          batchOrder: b.batch_order
+        })).sort((a: any, b: any) => a.batchOrder - b.batchOrder),
         status: t.status,
-        weights: t.weights.map((w: any) => ({
+        weights: (t.weights || []).map((w: any) => ({
           id: w.id,
           weight: Number(w.weight),
-          orderIndex: w.order_index
+          orderIndex: w.order_index,
+          riceBatchId: w.rice_batch_id
         })).sort((a: any, b: any) => a.orderIndex - b.orderIndex)
       }));
 
@@ -56,29 +64,49 @@ export const useTransaction = () => {
     fetchTransactions();
   }, [fetchTransactions]);
 
-  const createTransaction = useCallback(async (formData: TransactionFormData) => {
+  const createTransaction = useCallback(async (formData: TransactionFormData & { riceBatches: Array<{ rice_type: string; unit_price: number }> }) => {
     try {
-      const { data, error } = await supabase
+      // Create transaction
+      const { data: transactionData, error: transactionError } = await supabase
         .from('transactions')
         .insert([{
           customer_name: formData.customerName.trim(),
           license_plate: formData.licensePlate.trim().toUpperCase(),
-          rice_type: formData.riceType.trim(),
-          unit_price: parseFloat(formData.unitPrice) || 0,
           status: 'pending'
         }])
         .select()
         .single();
 
-      if (error) throw error;
+      if (transactionError) throw transactionError;
+
+      // Create rice batches
+      const batchInserts = formData.riceBatches.map((batch, index) => ({
+        transaction_id: transactionData.id,
+        rice_type: batch.rice_type,
+        unit_price: batch.unit_price,
+        batch_order: index
+      }));
+
+      const { data: batchesData, error: batchesError } = await supabase
+        .from('rice_batches')
+        .insert(batchInserts)
+        .select();
+
+      if (batchesError) throw batchesError;
 
       const newTransaction: Transaction = {
-        id: data.id,
-        createdAt: new Date(data.created_at),
-        customerName: data.customer_name,
-        licensePlate: data.license_plate,
-        riceType: data.rice_type,
-        unitPrice: Number(data.unit_price),
+        id: transactionData.id,
+        createdAt: new Date(transactionData.created_at),
+        customerName: transactionData.customer_name,
+        licensePlate: transactionData.license_plate,
+        riceType: '', // Deprecated
+        unitPrice: 0, // Deprecated
+        riceBatches: batchesData.map((b: any) => ({
+          id: b.id,
+          riceType: b.rice_type,
+          unitPrice: Number(b.unit_price),
+          batchOrder: b.batch_order
+        })).sort((a, b) => a.batchOrder - b.batchOrder),
         weights: [],
         status: 'pending',
       };
@@ -91,7 +119,7 @@ export const useTransaction = () => {
     }
   }, []);
 
-  const addWeight = useCallback(async (weight: number) => {
+  const addWeight = useCallback(async (weight: number, riceBatchId?: string) => {
     if (!currentTransaction || weight <= 0) return;
 
     try {
@@ -101,7 +129,8 @@ export const useTransaction = () => {
         .insert([{
           transaction_id: currentTransaction.id,
           weight: weight,
-          order_index: nextIndex
+          order_index: nextIndex,
+          rice_batch_id: riceBatchId || null
         }])
         .select()
         .single();
@@ -112,6 +141,7 @@ export const useTransaction = () => {
         id: data.id,
         weight: Number(data.weight),
         orderIndex: data.order_index,
+        riceBatchId: data.rice_batch_id,
       };
 
       const updated = {
@@ -221,14 +251,32 @@ export const useTransaction = () => {
 
   const summary: TransactionSummary = useMemo(() => {
     if (!currentTransaction) {
-      return { totalBags: 0, totalWeight: 0, totalAmount: 0 };
+      return { totalBags: 0, totalWeight: 0, totalAmount: 0, batchSummaries: [] };
     }
 
+    // Calculate summary per batch
+    const batchSummaries: BatchSummary[] = currentTransaction.riceBatches.map(batch => {
+      const batchWeights = currentTransaction.weights.filter(w => w.riceBatchId === batch.id);
+      const bags = batchWeights.length;
+      const weight = batchWeights.reduce((sum, w) => sum + w.weight, 0);
+      const amount = weight * batch.unitPrice;
+
+      return {
+        batchId: batch.id,
+        riceType: batch.riceType,
+        unitPrice: batch.unitPrice,
+        bags,
+        weight,
+        amount
+      };
+    });
+
+    // Calculate totals
     const totalBags = currentTransaction.weights.length;
     const totalWeight = currentTransaction.weights.reduce((sum, w) => sum + w.weight, 0);
-    const totalAmount = totalWeight * currentTransaction.unitPrice;
+    const totalAmount = batchSummaries.reduce((sum, b) => sum + b.amount, 0);
 
-    return { totalBags, totalWeight, totalAmount };
+    return { totalBags, totalWeight, totalAmount, batchSummaries };
   }, [currentTransaction]);
 
   const recentTransactions = useMemo(() => {

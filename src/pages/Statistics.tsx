@@ -116,13 +116,30 @@ const Statistics = () => {
       });
     }
 
+    // Helper function to calculate transaction amount
+    const calculateTransactionAmount = (t: any) => {
+      const tWeight = t.weights.reduce((sum: number, w: any) => sum + w.weight, 0);
+
+      // Multi-batch calculation
+      if (t.riceBatches && t.riceBatches.length > 0) {
+        return t.riceBatches.reduce((total: number, batch: any) => {
+          const batchWeights = t.weights.filter((w: any) => w.riceBatchId === batch.id);
+          const batchWeight = batchWeights.reduce((sum: number, w: any) => sum + w.weight, 0);
+          return total + (batchWeight * batch.unitPrice);
+        }, 0);
+      }
+
+      // Legacy single price
+      return tWeight * t.unitPrice;
+    };
+
     // 1. Calculate Stats based on filtered transactions
     const totalStats = filteredTransactions.reduce((acc, t) => {
       const tWeight = t.weights.reduce((sum, w) => sum + w.weight, 0);
       return {
         totalBags: acc.totalBags + t.weights.length,
         totalWeight: acc.totalWeight + tWeight,
-        totalAmount: acc.totalAmount + (tWeight * t.unitPrice)
+        totalAmount: acc.totalAmount + calculateTransactionAmount(t)
       };
     }, { totalBags: 0, totalWeight: 0, totalAmount: 0 });
 
@@ -189,10 +206,21 @@ const Statistics = () => {
       }
     }
 
-    // 3. Prepare Pie Data (Structure) - based on filtered transactions
+    // 3. Prepare Pie Data (Structure) - based on filtered transactions and batches
     const riceTypeMap = filteredTransactions.reduce((acc: any, t) => {
-      if (!acc[t.riceType]) acc[t.riceType] = 0;
-      acc[t.riceType] += t.weights.reduce((sum, w) => sum + w.weight, 0);
+      // Multi-batch: aggregate by batch rice types
+      if (t.riceBatches && t.riceBatches.length > 0) {
+        t.riceBatches.forEach((batch: any) => {
+          const batchWeights = t.weights.filter((w: any) => w.riceBatchId === batch.id);
+          const batchWeight = batchWeights.reduce((sum: number, w: any) => sum + w.weight, 0);
+          if (!acc[batch.riceType]) acc[batch.riceType] = 0;
+          acc[batch.riceType] += batchWeight;
+        });
+      } else {
+        // Legacy: single rice type
+        if (!acc[t.riceType]) acc[t.riceType] = 0;
+        acc[t.riceType] += t.weights.reduce((sum, w) => sum + w.weight, 0);
+      }
       return acc;
     }, {});
     const pData = Object.entries(riceTypeMap).map(([name, value]) => ({ name, value }));

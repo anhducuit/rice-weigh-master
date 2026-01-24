@@ -26,6 +26,8 @@ const formatDate = (date: Date) => {
 
 export const InvoicePreview = forwardRef<HTMLDivElement, InvoicePreviewProps>(
   ({ transaction, summary }, ref) => {
+    const hasBatchSummaries = summary.batchSummaries && summary.batchSummaries.length > 0;
+
     return (
       <div
         ref={ref}
@@ -52,17 +54,35 @@ export const InvoicePreview = forwardRef<HTMLDivElement, InvoicePreviewProps>(
             <span className="text-gray-500">Khách hàng:</span>
             <span className="font-medium">{transaction.customerName}</span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-gray-500">Loại gạo:</span>
-            <span className="font-medium">{transaction.riceType}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-500">Đơn giá:</span>
-            <span className="font-medium">
-              {formatCurrency(transaction.unitPrice)}/kg
-            </span>
-          </div>
         </div>
+
+        {/* Batch Details - Show if multiple batches */}
+        {hasBatchSummaries && (
+          <div className="border-t-2 border-dashed border-gray-300 pt-4 mb-4">
+            <p className="text-sm text-gray-500 mb-2">Chi tiết theo lô:</p>
+            <div className="space-y-2">
+              {summary.batchSummaries!.map((batch) => (
+                <div
+                  key={batch.batchId}
+                  className="bg-gray-50 rounded-lg p-3 space-y-1"
+                >
+                  <div className="flex justify-between font-medium">
+                    <span>{batch.riceType}</span>
+                    <span className="text-sm text-gray-500">
+                      {formatCurrency(batch.unitPrice)}/kg
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm text-gray-600">
+                    <span>{batch.bags} bao × {batch.weight.toFixed(1)} kg</span>
+                    <span className="font-medium text-green-700">
+                      {formatCurrency(batch.amount)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Weight Grid */}
         <div className="border-t-2 border-dashed border-gray-300 pt-4 mb-4">
@@ -70,14 +90,23 @@ export const InvoicePreview = forwardRef<HTMLDivElement, InvoicePreviewProps>(
             Chi tiết ({summary.totalBags} bao):
           </p>
           <div className="grid grid-cols-5 gap-1 text-center">
-            {transaction.weights.map((w, i) => (
-              <div
-                key={w.id}
-                className="bg-gray-100 rounded p-1 text-sm font-medium"
-              >
-                {w.weight}
-              </div>
-            ))}
+            {transaction.weights.map((w, i) => {
+              const batch = transaction.riceBatches.find(b => b.id === w.riceBatchId);
+
+              return (
+                <div
+                  key={w.id}
+                  className="bg-gray-100 rounded p-1 text-sm"
+                >
+                  <div className="font-medium">{w.weight}</div>
+                  {batch && transaction.riceBatches.length > 1 && (
+                    <div className="text-2xs text-gray-500 truncate" title={batch.riceType}>
+                      {batch.riceType.substring(0, 8)}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 

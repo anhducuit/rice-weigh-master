@@ -45,6 +45,7 @@ export interface Database {
                 Row: {
                     id: string
                     transaction_id: string
+                    rice_batch_id: string | null
                     weight: number
                     order_index: number
                     created_at: string
@@ -52,13 +53,15 @@ export interface Database {
                 Insert: {
                     id?: string
                     transaction_id: string
+                    rice_batch_id?: string | null
                     weight: number
                     order_index: number
                     created_at?: string
                 }
                 Update: {
                     id?: string
-                    transaction_id: string
+                    transaction_id?: string
+                    rice_batch_id?: string | null
                     weight?: number
                     order_index?: number
                     created_at?: string
@@ -100,6 +103,55 @@ export interface Database {
                     type?: 'customer' | 'partner'
                     notes?: string | null
                     is_active?: boolean
+                }
+            }
+            rice_batches: {
+                Row: {
+                    id: string
+                    transaction_id: string
+                    rice_type: string
+                    unit_price: number
+                    batch_order: number
+                    created_at: string
+                }
+                Insert: {
+                    id?: string
+                    transaction_id: string
+                    rice_type: string
+                    unit_price: number
+                    batch_order?: number
+                    created_at?: string
+                }
+                Update: {
+                    id?: string
+                    transaction_id?: string
+                    rice_type?: string
+                    unit_price?: number
+                    batch_order?: number
+                    created_at?: string
+                }
+            }
+            rice_prices: {
+                Row: {
+                    id: string
+                    rice_type: string
+                    default_price: number
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    id?: string
+                    rice_type: string
+                    default_price: number
+                    created_at?: string
+                    updated_at?: string
+                }
+                Update: {
+                    id?: string
+                    rice_type?: string
+                    default_price?: number
+                    created_at?: string
+                    updated_at?: string
                 }
             }
         }

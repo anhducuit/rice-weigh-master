@@ -11,7 +11,7 @@ import { toPng } from 'html-to-image';
 interface WeighingScreenProps {
   transaction: Transaction;
   summary: TransactionSummary;
-  onAddWeight: (weight: number) => void;
+  onAddWeight: (weight: number, riceBatchId?: string) => void;
   onUpdateWeight: (id: string, value: number) => void;
   onDeleteWeight: (id: string) => void;
   onComplete: () => void;
@@ -29,10 +29,18 @@ export const WeighingScreen = ({
 }: WeighingScreenProps) => {
   const [showInvoice, setShowInvoice] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
+  const [selectedBatchId, setSelectedBatchId] = useState<string>(
+    transaction.riceBatches[0]?.id || ''
+  );
   const invoiceRef = useRef<HTMLDivElement>(null);
 
   const handleComplete = () => {
     setShowInvoice(true);
+  };
+
+  const handleAddWeight = (weight: number) => {
+    // Pass the selected batch ID when adding weight
+    onAddWeight(weight, selectedBatchId);
   };
 
   const handleShare = async () => {
@@ -124,6 +132,11 @@ export const WeighingScreen = ({
     );
   }
 
+  // Get display text for header
+  const headerText = transaction.riceBatches.length > 0
+    ? transaction.riceBatches.map(b => b.riceType).join(', ')
+    : transaction.riceType;
+
   return (
     <div className="min-h-screen pb-40 animate-fade-in">
       {/* Header */}
@@ -138,7 +151,7 @@ export const WeighingScreen = ({
           <div className="text-center">
             <p className="font-bold text-lg">{transaction.licensePlate}</p>
             <p className="text-sm text-muted-foreground">
-              {transaction.customerName} • {transaction.riceType}
+              {transaction.customerName} • {headerText}
             </p>
           </div>
           <Button
@@ -156,19 +169,58 @@ export const WeighingScreen = ({
 
       {/* Content */}
       <div className="p-4 space-y-6">
+        {/* Batch Selector - Only show if multiple batches */}
+        {transaction.riceBatches.length > 1 && (
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">
+              Đang cân lô gạo:
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              {transaction.riceBatches.map((batch) => {
+                const batchSummary = summary.batchSummaries?.find(
+                  (s) => s.batchId === batch.id
+                );
+                const isSelected = selectedBatchId === batch.id;
+
+                return (
+                  <button
+                    key={batch.id}
+                    onClick={() => setSelectedBatchId(batch.id)}
+                    className={`p-3 rounded-xl border-2 transition-all text-left ${isSelected
+                        ? 'border-primary bg-primary/10'
+                        : 'border-border bg-card hover:border-primary/50'
+                      }`}
+                  >
+                    <p className="font-medium text-sm">{batch.riceType}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {batch.unitPrice.toLocaleString('vi-VN')} đ/kg
+                    </p>
+                    {batchSummary && batchSummary.bags > 0 && (
+                      <p className="text-xs text-primary mt-1">
+                        {batchSummary.bags} bao • {batchSummary.weight.toFixed(1)} kg
+                      </p>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Weight Input */}
-        <WeightInput onAddWeight={onAddWeight} />
+        <WeightInput onAddWeight={handleAddWeight} />
 
         {/* Weight Grid */}
         <WeightGrid
           weights={transaction.weights}
+          riceBatches={transaction.riceBatches}
           onUpdate={onUpdateWeight}
           onDelete={onDeleteWeight}
         />
       </div>
 
       {/* Sticky Summary */}
-      <StickyFooter summary={summary} unitPrice={transaction.unitPrice} />
+      <StickyFooter summary={summary} />
     </div>
   );
 };

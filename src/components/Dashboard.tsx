@@ -82,7 +82,25 @@ export const Dashboard = ({ recentTransactions, onNewTransaction, loading }: Das
           <div className="space-y-2">
             {recentTransactions.map((tx) => {
               const totalWeight = tx.weights.reduce((sum, w) => sum + w.weight, 0);
-              const totalAmount = totalWeight * tx.unitPrice;
+
+              // Calculate total amount based on batches
+              let totalAmount = 0;
+              if (tx.riceBatches && tx.riceBatches.length > 0) {
+                // Multi-batch: calculate per batch
+                tx.riceBatches.forEach(batch => {
+                  const batchWeights = tx.weights.filter(w => w.riceBatchId === batch.id);
+                  const batchWeight = batchWeights.reduce((sum, w) => sum + w.weight, 0);
+                  totalAmount += batchWeight * batch.unitPrice;
+                });
+              } else {
+                // Legacy: single price
+                totalAmount = totalWeight * tx.unitPrice;
+              }
+
+              // Display rice types
+              const riceTypesDisplay = tx.riceBatches && tx.riceBatches.length > 0
+                ? tx.riceBatches.map(b => b.riceType).join(', ')
+                : tx.riceType;
 
               return (
                 <div
@@ -99,15 +117,15 @@ export const Dashboard = ({ recentTransactions, onNewTransaction, loading }: Das
                       </p>
                       <span
                         className={`text-2xs px-2 py-0.5 rounded-full ${tx.status === 'completed'
-                            ? 'bg-success/20 text-success'
-                            : 'bg-warning/20 text-warning'
+                          ? 'bg-success/20 text-success'
+                          : 'bg-warning/20 text-warning'
                           }`}
                       >
                         {tx.status === 'completed' ? 'Xong' : 'Đang cân'}
                       </span>
                     </div>
                     <p className="text-sm text-muted-foreground truncate">
-                      {tx.customerName} • {tx.riceType}
+                      {tx.customerName} • {riceTypesDisplay}
                     </p>
                     <div className="flex items-center gap-3 mt-1 text-sm">
                       <span className="text-foreground font-medium">
