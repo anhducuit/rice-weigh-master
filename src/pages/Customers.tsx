@@ -256,7 +256,7 @@ const Customers = () => {
                                             <p className="text-xs text-muted-foreground mb-2 uppercase tracking-wide">
                                                 Thống kê giao dịch
                                             </p>
-                                            <div className="grid grid-cols-3 gap-3 mb-3">
+                                            <div className="grid grid-cols-3 gap-3">
                                                 <div className="bg-primary/5 rounded-lg p-2">
                                                     <div className="flex items-center gap-1 text-muted-foreground mb-1">
                                                         <Package className="w-3 h-3" />
@@ -285,30 +285,6 @@ const Customers = () => {
                                                     </p>
                                                 </div>
                                             </div>
-                                            {stats.riceTypeDetails.size > 0 && (
-                                                <div className="mt-2">
-                                                    <p className="text-2xs text-muted-foreground mb-1.5 uppercase tracking-wide">
-                                                        Chi tiết loại gạo:
-                                                    </p>
-                                                    <div className="space-y-1.5">
-                                                        {Array.from(stats.riceTypeDetails.entries()).map(([type, detail]) => (
-                                                            <div
-                                                                key={type}
-                                                                className="bg-secondary/50 rounded-lg p-2 flex items-center justify-between"
-                                                            >
-                                                                <span className="text-xs font-medium text-foreground">
-                                                                    {type}
-                                                                </span>
-                                                                <div className="flex items-center gap-3 text-2xs text-muted-foreground">
-                                                                    <span>{detail.bags} bao</span>
-                                                                    <span>•</span>
-                                                                    <span>{detail.weight.toFixed(0)} kg</span>
-                                                                </div>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
                                         </div>
                                     ) : (
                                         <div className="border-t border-border pt-3 mt-3">
