@@ -1,4 +1,10 @@
 @tailwind base;
+
+/* Safe area for bottom navigation */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
 @tailwind components;
 @tailwind utilities;
 
