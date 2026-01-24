@@ -73,6 +73,31 @@ const PaymentCollection = () => {
         return total;
     }, [selectedTransactions]);
 
+    // Calculate total for all unpaid transactions
+    const unpaidSummary = useMemo(() => {
+        let totalBags = 0;
+        let totalWeight = 0;
+        let totalAmount = 0;
+
+        customerTransactions.forEach(tx => {
+            totalBags += tx.weights.length;
+            const txWeight = tx.weights.reduce((sum, w) => sum + w.weight, 0);
+            totalWeight += txWeight;
+
+            if (tx.riceBatches && tx.riceBatches.length > 0) {
+                tx.riceBatches.forEach(batch => {
+                    const batchWeights = tx.weights.filter(w => w.riceBatchId === batch.id);
+                    const batchWeight = batchWeights.reduce((sum, w) => sum + w.weight, 0);
+                    totalAmount += batchWeight * batch.unitPrice;
+                });
+            } else {
+                totalAmount += txWeight * tx.unitPrice;
+            }
+        });
+
+        return { totalBags, totalWeight, totalAmount };
+    }, [customerTransactions]);
+
     const handleTransactionToggle = (transactionId: string) => {
         const newSet = new Set(selectedTransactionIds);
         if (newSet.has(transactionId)) {
@@ -230,17 +255,37 @@ const PaymentCollection = () => {
                             </div>
                         ) : (
                             <>
-                                <div className="flex items-center justify-between mb-3">
-                                    <h2 className="text-sm font-semibold text-foreground">
-                                        Chuyến xe chưa thu tiền ({customerTransactions.length})
-                                    </h2>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={handleSelectAll}
-                                    >
-                                        {selectedTransactionIds.size === customerTransactions.length ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
-                                    </Button>
+                                <div className="mb-3">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <h2 className="text-sm font-semibold text-foreground">
+                                            Chuyến xe chưa thu tiền ({customerTransactions.length})
+                                        </h2>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={handleSelectAll}
+                                        >
+                                            {selectedTransactionIds.size === customerTransactions.length ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
+                                        </Button>
+                                    </div>
+
+                                    {/* Summary Statistics */}
+                                    <div className="bg-muted/50 rounded-lg p-3 border border-border">
+                                        <div className="grid grid-cols-3 gap-2 text-center">
+                                            <div>
+                                                <p className="text-2xs text-muted-foreground mb-0.5">Tổng bao</p>
+                                                <p className="text-sm font-bold text-foreground">{unpaidSummary.totalBags}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-2xs text-muted-foreground mb-0.5">Tổng kg</p>
+                                                <p className="text-sm font-bold text-foreground">{unpaidSummary.totalWeight.toFixed(0)}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-2xs text-muted-foreground mb-0.5">Tổng tiền</p>
+                                                <p className="text-sm font-bold text-destructive">{formatCurrency(unpaidSummary.totalAmount)}</p>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div className="space-y-3 mb-6">
