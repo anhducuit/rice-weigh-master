@@ -33,6 +33,7 @@ interface CustomerStats {
     totalWeight: number;
     totalAmount: number;
     riceTypes: Set<string>;
+    riceTypeDetails: Map<string, { bags: number; weight: number }>;
 }
 
 const formatCurrency = (amount: number) => {
@@ -66,25 +67,43 @@ const Customers = () => {
                     totalBags: 0,
                     totalWeight: 0,
                     totalAmount: 0,
-                    riceTypes: new Set<string>()
+                    riceTypes: new Set<string>(),
+                    riceTypeDetails: new Map<string, { bags: number; weight: number }>()
                 });
             }
 
             const stat = stats.get(customerName)!;
             stat.totalBags += tx.weights.length;
-            stat.totalWeight += tx.weights.reduce((sum, w) => sum + w.weight, 0);
+            const txWeight = tx.weights.reduce((sum, w) => sum + w.weight, 0);
+            stat.totalWeight += txWeight;
 
-            // Calculate amount based on batches or legacy
+            // Calculate amount and rice type details based on batches or legacy
             if (tx.riceBatches && tx.riceBatches.length > 0) {
                 tx.riceBatches.forEach(batch => {
                     stat.riceTypes.add(batch.riceType);
                     const batchWeights = tx.weights.filter(w => w.riceBatchId === batch.id);
                     const batchWeight = batchWeights.reduce((sum, w) => sum + w.weight, 0);
                     stat.totalAmount += batchWeight * batch.unitPrice;
+
+                    // Update rice type details
+                    if (!stat.riceTypeDetails.has(batch.riceType)) {
+                        stat.riceTypeDetails.set(batch.riceType, { bags: 0, weight: 0 });
+                    }
+                    const detail = stat.riceTypeDetails.get(batch.riceType)!;
+                    detail.bags += batchWeights.length;
+                    detail.weight += batchWeight;
                 });
             } else {
                 stat.riceTypes.add(tx.riceType);
-                stat.totalAmount += stat.totalWeight * tx.unitPrice;
+                stat.totalAmount += txWeight * tx.unitPrice;
+
+                // Update rice type details for legacy
+                if (!stat.riceTypeDetails.has(tx.riceType)) {
+                    stat.riceTypeDetails.set(tx.riceType, { bags: 0, weight: 0 });
+                }
+                const detail = stat.riceTypeDetails.get(tx.riceType)!;
+                detail.bags += tx.weights.length;
+                detail.weight += txWeight;
             }
         });
 
@@ -237,7 +256,7 @@ const Customers = () => {
                                             <p className="text-xs text-muted-foreground mb-2 uppercase tracking-wide">
                                                 Thống kê giao dịch
                                             </p>
-                                            <div className="grid grid-cols-3 gap-3">
+                                            <div className="grid grid-cols-3 gap-3 mb-3">
                                                 <div className="bg-primary/5 rounded-lg p-2">
                                                     <div className="flex items-center gap-1 text-muted-foreground mb-1">
                                                         <Package className="w-3 h-3" />
@@ -261,24 +280,31 @@ const Customers = () => {
                                                         <Banknote className="w-3 h-3" />
                                                         <span className="text-2xs">Tiền</span>
                                                     </div>
-                                                    <p className="text-xs font-bold text-success">
-                                                        {(stats.totalAmount / 1000000).toFixed(1)}M
+                                                    <p className="text-xs font-bold text-success leading-tight">
+                                                        {formatCurrency(stats.totalAmount)}
                                                     </p>
                                                 </div>
                                             </div>
-                                            {stats.riceTypes.size > 0 && (
+                                            {stats.riceTypeDetails.size > 0 && (
                                                 <div className="mt-2">
-                                                    <p className="text-2xs text-muted-foreground mb-1">
-                                                        Loại gạo:
+                                                    <p className="text-2xs text-muted-foreground mb-1.5 uppercase tracking-wide">
+                                                        Chi tiết loại gạo:
                                                     </p>
-                                                    <div className="flex flex-wrap gap-1">
-                                                        {Array.from(stats.riceTypes).map(type => (
-                                                            <span
+                                                    <div className="space-y-1.5">
+                                                        {Array.from(stats.riceTypeDetails.entries()).map(([type, detail]) => (
+                                                            <div
                                                                 key={type}
-                                                                className="text-2xs bg-secondary px-2 py-0.5 rounded-full text-foreground"
+                                                                className="bg-secondary/50 rounded-lg p-2 flex items-center justify-between"
                                                             >
-                                                                {type}
-                                                            </span>
+                                                                <span className="text-xs font-medium text-foreground">
+                                                                    {type}
+                                                                </span>
+                                                                <div className="flex items-center gap-3 text-2xs text-muted-foreground">
+                                                                    <span>{detail.bags} bao</span>
+                                                                    <span>•</span>
+                                                                    <span>{detail.weight.toFixed(0)} kg</span>
+                                                                </div>
+                                                            </div>
                                                         ))}
                                                     </div>
                                                 </div>
@@ -328,3 +354,4 @@ const Customers = () => {
 };
 
 export default Customers;
+
