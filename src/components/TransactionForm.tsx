@@ -88,10 +88,12 @@ export const TransactionForm = ({ onSubmit, onCancel }: TransactionFormProps) =>
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (validate()) {
-      onSubmit({
+      const submitData = {
         ...formData,
         riceBatches: riceBatches.filter(b => b.rice_type && b.unit_price > 0)
-      });
+      };
+      console.log('Submitting transaction data:', submitData);
+      onSubmit(submitData);
     }
   };
 

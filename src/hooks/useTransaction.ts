@@ -66,6 +66,8 @@ export const useTransaction = () => {
 
   const createTransaction = useCallback(async (formData: TransactionFormData & { riceBatches: Array<{ rice_type: string; unit_price: number }> }) => {
     try {
+      console.log('Creating transaction with data:', formData);
+
       // Create transaction
       const { data: transactionData, error: transactionError } = await supabase
         .from('transactions')
@@ -77,7 +79,12 @@ export const useTransaction = () => {
         .select()
         .single();
 
-      if (transactionError) throw transactionError;
+      if (transactionError) {
+        console.error('Transaction creation error:', transactionError);
+        throw transactionError;
+      }
+
+      console.log('Transaction created:', transactionData);
 
       // Create rice batches
       const batchInserts = formData.riceBatches.map((batch, index) => ({
@@ -87,12 +94,19 @@ export const useTransaction = () => {
         batch_order: index
       }));
 
+      console.log('Creating rice batches:', batchInserts);
+
       const { data: batchesData, error: batchesError } = await supabase
         .from('rice_batches')
         .insert(batchInserts)
         .select();
 
-      if (batchesError) throw batchesError;
+      if (batchesError) {
+        console.error('Rice batches creation error:', batchesError);
+        throw batchesError;
+      }
+
+      console.log('Rice batches created:', batchesData);
 
       const newTransaction: Transaction = {
         id: transactionData.id,
@@ -112,6 +126,7 @@ export const useTransaction = () => {
       };
 
       setCurrentTransaction(newTransaction);
+      console.log('Transaction set successfully:', newTransaction);
       return newTransaction;
     } catch (e) {
       console.error('Failed to create transaction:', e);

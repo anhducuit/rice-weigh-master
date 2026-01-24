@@ -25,9 +25,14 @@ const Index = () => {
     setScreen('form');
   };
 
-  const handleFormSubmit = (data: Parameters<typeof createTransaction>[0]) => {
-    createTransaction(data);
-    setScreen('weighing');
+  const handleFormSubmit = async (data: Parameters<typeof createTransaction>[0]) => {
+    const result = await createTransaction(data);
+    if (result) {
+      setScreen('weighing');
+    } else {
+      // Show error toast or alert
+      alert('Không thể tạo chuyến xe. Vui lòng kiểm tra kết nối và thử lại.');
+    }
   };
 
   const handleFormCancel = () => {
