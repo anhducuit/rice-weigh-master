@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { BarChart3, Package, Weight, DollarSign, TrendingUp, PieChart as PieChartIcon, Calendar } from 'lucide-react';
+import { BarChart3, Package, Weight, DollarSign, TrendingUp, PieChart as PieChartIcon, Calendar, Check } from 'lucide-react';
 import { BottomNav } from '@/components/BottomNav';
 import { useTransaction } from '@/hooks/useTransaction';
 import {
@@ -14,7 +14,8 @@ import {
   isSameDay,
   startOfYear,
   eachMonthOfInterval,
-  getQuarter
+  getQuarter,
+  getDaysInMonth
 } from 'date-fns';
 import { vi } from 'date-fns/locale';
 
@@ -24,19 +25,99 @@ const Statistics = () => {
   const { transactions, loading } = useTransaction();
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('day');
 
+  // Selection states for each period type
+  const [selectedDays, setSelectedDays] = useState<number[]>([]);
+  const [selectedMonths, setSelectedMonths] = useState<number[]>([]);
+  const [selectedQuarters, setSelectedQuarters] = useState<number[]>([]);
+
   // Filter completed transactions for statistics
   const completedTransactions = useMemo(() =>
     transactions.filter(t => t.status === 'completed'),
     [transactions]
   );
 
-  // Group and processed data based on timePeriod
+  // Get available options for current period
+  const availableOptions = useMemo(() => {
+    const now = new Date();
+    if (timePeriod === 'day') {
+      const daysInMonth = getDaysInMonth(now);
+      return Array.from({ length: daysInMonth }, (_, i) => i + 1);
+    } else if (timePeriod === 'month') {
+      return Array.from({ length: 12 }, (_, i) => i + 1);
+    } else {
+      return [1, 2, 3, 4];
+    }
+  }, [timePeriod]);
+
+  // Toggle selection
+  const toggleSelection = (value: number) => {
+    if (timePeriod === 'day') {
+      setSelectedDays(prev =>
+        prev.includes(value) ? prev.filter(d => d !== value) : [...prev, value]
+      );
+    } else if (timePeriod === 'month') {
+      setSelectedMonths(prev =>
+        prev.includes(value) ? prev.filter(m => m !== value) : [...prev, value]
+      );
+    } else {
+      setSelectedQuarters(prev =>
+        prev.includes(value) ? prev.filter(q => q !== value) : [...prev, value]
+      );
+    }
+  };
+
+  // Select/Deselect all
+  const selectAll = () => {
+    if (timePeriod === 'day') setSelectedDays(availableOptions);
+    else if (timePeriod === 'month') setSelectedMonths(availableOptions);
+    else setSelectedQuarters(availableOptions);
+  };
+
+  const deselectAll = () => {
+    if (timePeriod === 'day') setSelectedDays([]);
+    else if (timePeriod === 'month') setSelectedMonths([]);
+    else setSelectedQuarters([]);
+  };
+
+  // Get current selection
+  const currentSelection = useMemo(() => {
+    if (timePeriod === 'day') return selectedDays;
+    if (timePeriod === 'month') return selectedMonths;
+    return selectedQuarters;
+  }, [timePeriod, selectedDays, selectedMonths, selectedQuarters]);
+
+  // Group and processed data based on timePeriod and selection
   const { chartData, stats, pieData } = useMemo(() => {
     const now = new Date();
     let data: any[] = [];
+    let filteredTransactions = completedTransactions;
 
-    // 1. Calculate Stats based on current view
-    const totalStats = completedTransactions.reduce((acc, t) => {
+    // Filter transactions based on selection
+    if (timePeriod === 'day' && selectedDays.length > 0) {
+      filteredTransactions = completedTransactions.filter(t => {
+        const day = t.createdAt.getDate();
+        const month = t.createdAt.getMonth();
+        const year = t.createdAt.getFullYear();
+        return selectedDays.includes(day) &&
+          month === now.getMonth() &&
+          year === now.getFullYear();
+      });
+    } else if (timePeriod === 'month' && selectedMonths.length > 0) {
+      filteredTransactions = completedTransactions.filter(t => {
+        const month = t.createdAt.getMonth() + 1;
+        const year = t.createdAt.getFullYear();
+        return selectedMonths.includes(month) && year === now.getFullYear();
+      });
+    } else if (timePeriod === 'quarter' && selectedQuarters.length > 0) {
+      filteredTransactions = completedTransactions.filter(t => {
+        const quarter = getQuarter(t.createdAt);
+        const year = t.createdAt.getFullYear();
+        return selectedQuarters.includes(quarter) && year === now.getFullYear();
+      });
+    }
+
+    // 1. Calculate Stats based on filtered transactions
+    const totalStats = filteredTransactions.reduce((acc, t) => {
       const tWeight = t.weights.reduce((sum, w) => sum + w.weight, 0);
       return {
         totalBags: acc.totalBags + t.weights.length,
@@ -52,19 +133,27 @@ const Statistics = () => {
       const days = eachDayOfInterval({ start, end });
 
       data = days.map(day => {
+        const dayOfMonth = day.getDate();
         const dayTxs = completedTransactions.filter(t => isSameDay(t.createdAt, day));
         const weight = dayTxs.reduce((sum, t) => sum + t.weights.reduce((s, w) => s + w.weight, 0), 0);
         return {
           label: format(day, 'dd/MM'),
           weight,
-          fullDate: format(day, 'dd/MM/yyyy')
+          fullDate: format(day, 'dd/MM/yyyy'),
+          value: dayOfMonth
         };
       });
+
+      // Filter by selection
+      if (selectedDays.length > 0) {
+        data = data.filter(d => selectedDays.includes(d.value));
+      }
     } else if (timePeriod === 'month') {
       const start = startOfYear(now);
       const months = eachMonthOfInterval({ start, end: now });
 
       data = months.map(month => {
+        const monthNumber = month.getMonth() + 1;
         const monthTxs = completedTransactions.filter(t =>
           t.createdAt.getMonth() === month.getMonth() &&
           t.createdAt.getFullYear() === month.getFullYear()
@@ -73,9 +162,15 @@ const Statistics = () => {
         return {
           label: format(month, 'MMM', { locale: vi }),
           weight,
-          fullDate: format(month, 'MMMM yyyy', { locale: vi })
+          fullDate: format(month, 'MMMM yyyy', { locale: vi }),
+          value: monthNumber
         };
       });
+
+      // Filter by selection
+      if (selectedMonths.length > 0) {
+        data = data.filter(d => selectedMonths.includes(d.value));
+      }
     } else if (timePeriod === 'quarter') {
       data = [1, 2, 3, 4].map(q => {
         const quarterTxs = completedTransactions.filter(t => getQuarter(t.createdAt) === q && t.createdAt.getFullYear() === now.getFullYear());
@@ -83,13 +178,19 @@ const Statistics = () => {
         return {
           label: `Quý ${q}`,
           weight,
-          fullDate: `Quý ${q} - ${now.getFullYear()}`
+          fullDate: `Quý ${q} - ${now.getFullYear()}`,
+          value: q
         };
       });
+
+      // Filter by selection
+      if (selectedQuarters.length > 0) {
+        data = data.filter(d => selectedQuarters.includes(d.value));
+      }
     }
 
-    // 3. Prepare Pie Data (Structure)
-    const riceTypeMap = completedTransactions.reduce((acc: any, t) => {
+    // 3. Prepare Pie Data (Structure) - based on filtered transactions
+    const riceTypeMap = filteredTransactions.reduce((acc: any, t) => {
       if (!acc[t.riceType]) acc[t.riceType] = 0;
       acc[t.riceType] += t.weights.reduce((sum, w) => sum + w.weight, 0);
       return acc;
@@ -97,7 +198,7 @@ const Statistics = () => {
     const pData = Object.entries(riceTypeMap).map(([name, value]) => ({ name, value }));
 
     return { chartData: data, stats: totalStats, pieData: pData };
-  }, [completedTransactions, timePeriod]);
+  }, [completedTransactions, timePeriod, selectedDays, selectedMonths, selectedQuarters]);
 
   const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6'];
 
@@ -147,6 +248,65 @@ const Statistics = () => {
               {p === 'day' ? 'Ngày' : p === 'month' ? 'Tháng' : 'Quý'}
             </button>
           ))}
+        </div>
+
+        {/* Date Range Selector */}
+        <div className="bg-card border border-border rounded-2xl p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-primary" />
+              <h3 className="text-sm font-bold uppercase tracking-wide">
+                {timePeriod === 'day' ? 'Chọn ngày' : timePeriod === 'month' ? 'Chọn tháng' : 'Chọn quý'}
+              </h3>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={selectAll}
+                className="text-xs px-3 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-medium"
+              >
+                Tất cả
+              </button>
+              <button
+                onClick={deselectAll}
+                className="text-xs px-3 py-1.5 rounded-lg bg-secondary text-muted-foreground hover:bg-secondary/80 transition-colors font-medium"
+              >
+                Bỏ chọn
+              </button>
+            </div>
+          </div>
+
+          <div className={`grid gap-2 ${timePeriod === 'day' ? 'grid-cols-7' : timePeriod === 'month' ? 'grid-cols-6' : 'grid-cols-4'}`}>
+            {availableOptions.map((value) => {
+              const isSelected = currentSelection.includes(value);
+              const label = timePeriod === 'day'
+                ? value.toString()
+                : timePeriod === 'month'
+                  ? `T${value}`
+                  : `Q${value}`;
+
+              return (
+                <button
+                  key={value}
+                  onClick={() => toggleSelection(value)}
+                  className={`relative py-2 px-3 rounded-lg text-sm font-bold transition-all ${isSelected
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'bg-secondary/50 text-muted-foreground hover:bg-secondary hover:text-foreground'
+                    }`}
+                >
+                  {isSelected && (
+                    <Check className="w-3 h-3 absolute top-1 right-1" />
+                  )}
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+
+          {currentSelection.length > 0 && (
+            <p className="text-xs text-muted-foreground mt-3 text-center">
+              Đã chọn {currentSelection.length} {timePeriod === 'day' ? 'ngày' : timePeriod === 'month' ? 'tháng' : 'quý'}
+            </p>
+          )}
         </div>
 
         {/* Global Stats Cards */}
