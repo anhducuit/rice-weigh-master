@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef } from 'react';
-import { Banknote, Check, Share2, Download } from 'lucide-react';
+import { Banknote, Check, Share2, Eye, CheckCircle2 } from 'lucide-react';
 import { BottomNav } from '@/components/BottomNav';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useTransaction } from '@/hooks/useTransaction';
@@ -33,6 +33,7 @@ const PaymentCollection = () => {
     const [selectedCustomer, setSelectedCustomer] = useState<string>('');
     const [selectedTransactionIds, setSelectedTransactionIds] = useState<Set<string>>(new Set());
     const [showInvoice, setShowInvoice] = useState(false);
+    const [viewInvoiceTransaction, setViewInvoiceTransaction] = useState<Transaction | null>(null);
     const [isSharing, setIsSharing] = useState(false);
     const [isMarkingPaid, setIsMarkingPaid] = useState(false);
     const invoiceRef = useRef<HTMLDivElement>(null);
@@ -40,22 +41,29 @@ const PaymentCollection = () => {
     // Get active customers
     const activeCustomers = customers.filter(c => c.is_active);
 
-    // Get unpaid transactions for selected customer
+    // Get ALL completed transactions for selected customer (both paid and unpaid)
     const customerTransactions = useMemo(() => {
         if (!selectedCustomer) return [];
         return transactions.filter(
-            tx => tx.customerName === selectedCustomer &&
-                tx.status === 'completed' &&
-                tx.paymentStatus === 'unpaid'
+            tx => tx.customerName === selectedCustomer && tx.status === 'completed'
         ).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }, [transactions, selectedCustomer]);
+
+    // Separate paid and unpaid transactions
+    const unpaidTransactions = useMemo(() => {
+        return customerTransactions.filter(tx => tx.paymentStatus === 'unpaid');
+    }, [customerTransactions]);
+
+    const paidTransactions = useMemo(() => {
+        return customerTransactions.filter(tx => tx.paymentStatus === 'paid');
+    }, [customerTransactions]);
 
     // Get selected transactions
     const selectedTransactions = useMemo(() => {
         return customerTransactions.filter(tx => selectedTransactionIds.has(tx.id));
     }, [customerTransactions, selectedTransactionIds]);
 
-    // Calculate total
+    // Calculate total for selected
     const totalAmount = useMemo(() => {
         let total = 0;
         selectedTransactions.forEach(tx => {
@@ -73,32 +81,39 @@ const PaymentCollection = () => {
         return total;
     }, [selectedTransactions]);
 
-    // Calculate total for all unpaid transactions
-    const unpaidSummary = useMemo(() => {
-        let totalBags = 0;
-        let totalWeight = 0;
-        let totalAmount = 0;
+    // Calculate summary for paid and unpaid transactions
+    const transactionSummary = useMemo(() => {
+        let unpaidAmount = 0;
+        let paidAmount = 0;
 
         customerTransactions.forEach(tx => {
-            totalBags += tx.weights.length;
             const txWeight = tx.weights.reduce((sum, w) => sum + w.weight, 0);
-            totalWeight += txWeight;
+            let txAmount = 0;
 
             if (tx.riceBatches && tx.riceBatches.length > 0) {
                 tx.riceBatches.forEach(batch => {
                     const batchWeights = tx.weights.filter(w => w.riceBatchId === batch.id);
                     const batchWeight = batchWeights.reduce((sum, w) => sum + w.weight, 0);
-                    totalAmount += batchWeight * batch.unitPrice;
+                    txAmount += batchWeight * batch.unitPrice;
                 });
             } else {
-                totalAmount += txWeight * tx.unitPrice;
+                txAmount = txWeight * tx.unitPrice;
+            }
+
+            if (tx.paymentStatus === 'paid') {
+                paidAmount += txAmount;
+            } else {
+                unpaidAmount += txAmount;
             }
         });
 
-        return { totalBags, totalWeight, totalAmount };
+        return { unpaidAmount, paidAmount };
     }, [customerTransactions]);
 
-    const handleTransactionToggle = (transactionId: string) => {
+    const handleTransactionToggle = (transactionId: string, isPaid: boolean) => {
+        // Don't allow selecting paid transactions
+        if (isPaid) return;
+
         const newSet = new Set(selectedTransactionIds);
         if (newSet.has(transactionId)) {
             newSet.delete(transactionId);
@@ -109,10 +124,11 @@ const PaymentCollection = () => {
     };
 
     const handleSelectAll = () => {
-        if (selectedTransactionIds.size === customerTransactions.length) {
+        // Only select unpaid transactions
+        if (selectedTransactionIds.size === unpaidTransactions.length) {
             setSelectedTransactionIds(new Set());
         } else {
-            setSelectedTransactionIds(new Set(customerTransactions.map(tx => tx.id)));
+            setSelectedTransactionIds(new Set(unpaidTransactions.map(tx => tx.id)));
         }
     };
 
@@ -121,6 +137,12 @@ const PaymentCollection = () => {
             alert('Vui lòng chọn ít nhất một chuyến xe');
             return;
         }
+        setShowInvoice(true);
+        setViewInvoiceTransaction(null);
+    };
+
+    const handleViewInvoice = (tx: Transaction) => {
+        setViewInvoiceTransaction(tx);
         setShowInvoice(true);
     };
 
@@ -251,80 +273,99 @@ const PaymentCollection = () => {
                             </div>
                         ) : customerTransactions.length === 0 ? (
                             <div className="text-center py-12">
-                                <p className="text-muted-foreground">Không có chuyến xe chưa thanh toán</p>
+                                <p className="text-muted-foreground">Không có chuyến xe nào</p>
                             </div>
                         ) : (
                             <>
                                 <div className="mb-3">
                                     <div className="flex items-center justify-between mb-2">
                                         <h2 className="text-sm font-semibold text-foreground">
-                                            Chuyến xe chưa thu tiền ({customerTransactions.length})
+                                            Danh sách chuyến xe ({customerTransactions.length})
                                         </h2>
                                         <Button
                                             variant="ghost"
                                             size="sm"
                                             onClick={handleSelectAll}
                                         >
-                                            {selectedTransactionIds.size === customerTransactions.length ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
+                                            {selectedTransactionIds.size === unpaidTransactions.length ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
                                         </Button>
                                     </div>
 
                                     {/* Summary Statistics */}
                                     <div className="bg-muted/50 rounded-lg p-3 border border-border">
-                                        <div className="grid grid-cols-3 gap-2 text-center">
+                                        <div className="grid grid-cols-2 gap-3 text-center">
                                             <div>
-                                                <p className="text-2xs text-muted-foreground mb-0.5">Tổng bao</p>
-                                                <p className="text-sm font-bold text-foreground">{unpaidSummary.totalBags}</p>
+                                                <p className="text-2xs text-muted-foreground mb-0.5">Chưa thanh toán</p>
+                                                <p className="text-sm font-bold text-destructive">{formatCurrency(transactionSummary.unpaidAmount)}</p>
                                             </div>
                                             <div>
-                                                <p className="text-2xs text-muted-foreground mb-0.5">Tổng kg</p>
-                                                <p className="text-sm font-bold text-foreground">{unpaidSummary.totalWeight.toFixed(0)}</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-2xs text-muted-foreground mb-0.5">Tổng tiền</p>
-                                                <p className="text-sm font-bold text-destructive">{formatCurrency(unpaidSummary.totalAmount)}</p>
+                                                <p className="text-2xs text-muted-foreground mb-0.5">Đã thanh toán</p>
+                                                <p className="text-sm font-bold text-success">{formatCurrency(transactionSummary.paidAmount)}</p>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
                                 <div className="space-y-3 mb-6">
-                                    {customerTransactions.map((tx) => (
-                                        <div
-                                            key={tx.id}
-                                            className={`bg-card rounded-lg p-4 border ${selectedTransactionIds.has(tx.id) ? 'border-primary bg-primary/5' : 'border-border'
-                                                }`}
-                                            onClick={() => handleTransactionToggle(tx.id)}
-                                        >
-                                            <div className="flex items-start gap-3">
-                                                <Checkbox
-                                                    checked={selectedTransactionIds.has(tx.id)}
-                                                    onCheckedChange={() => handleTransactionToggle(tx.id)}
-                                                    className="mt-1"
-                                                />
-                                                <div className="flex-1">
-                                                    <div className="flex items-center justify-between mb-1">
-                                                        <span className="font-semibold text-foreground">
-                                                            {tx.licensePlate}
-                                                        </span>
-                                                        <span className="text-xs text-muted-foreground">
-                                                            {format(new Date(tx.createdAt), 'dd/MM/yyyy', { locale: vi })}
-                                                        </span>
-                                                    </div>
-                                                    <div className="text-sm text-muted-foreground space-y-1">
-                                                        <p>🌾 {getRiceTypeSummary(tx)}</p>
-                                                        <p>📦 {tx.weights.length} bao • {tx.weights.reduce((sum, w) => sum + w.weight, 0).toFixed(0)} kg</p>
-                                                        <p className="font-semibold text-success">
-                                                            💰 {formatCurrency(getTransactionAmount(tx))}
-                                                        </p>
+                                    {customerTransactions.map((tx) => {
+                                        const isPaid = tx.paymentStatus === 'paid';
+                                        return (
+                                            <div
+                                                key={tx.id}
+                                                className={`bg-card rounded-lg p-4 border ${selectedTransactionIds.has(tx.id) ? 'border-primary bg-primary/5' : 'border-border'
+                                                    } ${isPaid ? 'opacity-75' : ''}`}
+                                            >
+                                                <div className="flex items-start gap-3">
+                                                    {!isPaid && (
+                                                        <Checkbox
+                                                            checked={selectedTransactionIds.has(tx.id)}
+                                                            onCheckedChange={() => handleTransactionToggle(tx.id, isPaid)}
+                                                            className="mt-1"
+                                                        />
+                                                    )}
+                                                    <div className="flex-1">
+                                                        <div className="flex items-center justify-between mb-1">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="font-semibold text-foreground">
+                                                                    {tx.licensePlate}
+                                                                </span>
+                                                                {isPaid && (
+                                                                    <span className="inline-flex items-center gap-1 text-2xs bg-success/10 text-success px-2 py-0.5 rounded-full">
+                                                                        <CheckCircle2 className="w-3 h-3" />
+                                                                        Đã thanh toán
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <span className="text-xs text-muted-foreground">
+                                                                {format(new Date(tx.createdAt), 'dd/MM/yyyy', { locale: vi })}
+                                                            </span>
+                                                        </div>
+                                                        <div className="text-sm text-muted-foreground space-y-1">
+                                                            <p>🌾 {getRiceTypeSummary(tx)}</p>
+                                                            <p>📦 {tx.weights.length} bao • {tx.weights.reduce((sum, w) => sum + w.weight, 0).toFixed(0)} kg</p>
+                                                            <p className="font-semibold text-success">
+                                                                💰 {formatCurrency(getTransactionAmount(tx))}
+                                                            </p>
+                                                        </div>
+                                                        {isPaid && (
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                className="mt-2 w-full"
+                                                                onClick={() => handleViewInvoice(tx)}
+                                                            >
+                                                                <Eye className="w-4 h-4 mr-2" />
+                                                                Xem bill
+                                                            </Button>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
 
-                                {/* Summary */}
+                                {/* Summary for selected */}
                                 {selectedTransactionIds.size > 0 && (
                                     <div className="bg-card rounded-lg p-4 border border-primary mb-6">
                                         <div className="flex items-center justify-between mb-2">
@@ -359,7 +400,7 @@ const PaymentCollection = () => {
                                 <div ref={invoiceRef}>
                                     <PaymentInvoice
                                         customerName={selectedCustomer}
-                                        transactions={selectedTransactions}
+                                        transactions={viewInvoiceTransaction ? [viewInvoiceTransaction] : selectedTransactions}
                                     />
                                 </div>
 
@@ -367,7 +408,10 @@ const PaymentCollection = () => {
                                     <Button
                                         variant="outline"
                                         className="flex-1"
-                                        onClick={() => setShowInvoice(false)}
+                                        onClick={() => {
+                                            setShowInvoice(false);
+                                            setViewInvoiceTransaction(null);
+                                        }}
                                     >
                                         Đóng
                                     </Button>
@@ -380,14 +424,16 @@ const PaymentCollection = () => {
                                         <Share2 className="w-4 h-4 mr-2" />
                                         {isSharing ? 'Đang chia sẻ...' : 'Chia sẻ'}
                                     </Button>
-                                    <Button
-                                        className="flex-1"
-                                        onClick={handleMarkAsPaid}
-                                        disabled={isMarkingPaid}
-                                    >
-                                        <Check className="w-4 h-4 mr-2" />
-                                        {isMarkingPaid ? 'Đang lưu...' : 'Đã thanh toán'}
-                                    </Button>
+                                    {!viewInvoiceTransaction && (
+                                        <Button
+                                            className="flex-1"
+                                            onClick={handleMarkAsPaid}
+                                            disabled={isMarkingPaid}
+                                        >
+                                            <Check className="w-4 h-4 mr-2" />
+                                            {isMarkingPaid ? 'Đang lưu...' : 'Đã thanh toán'}
+                                        </Button>
+                                    )}
                                 </div>
                             </div>
                         </div>
