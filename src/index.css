@@ -1,0 +1,204 @@
+@tailwind base;
+
+/* Safe area for bottom navigation */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+@layer base {
+  :root {
+    /* Rice/Agriculture theme - Fresh green */
+    --background: 120 20% 98%;
+    --foreground: 140 30% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 140 30% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 140 30% 15%;
+
+    /* Primary - Deep green */
+    --primary: 142 72% 29%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary - Light sage */
+    --secondary: 140 30% 94%;
+    --secondary-foreground: 140 30% 25%;
+
+    --muted: 140 15% 92%;
+    --muted-foreground: 140 10% 45%;
+
+    /* Accent - Vibrant orange for actions */
+    --accent: 24 95% 53%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Success - Bright green */
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+
+    /* Warning - Golden yellow */
+    --warning: 45 93% 47%;
+    --warning-foreground: 0 0% 10%;
+
+    --border: 140 20% 88%;
+    --input: 140 20% 88%;
+    --ring: 142 72% 29%;
+
+    --radius: 1rem;
+
+    /* Custom tokens for rice weighing app */
+    --weight-input-bg: 140 40% 96%;
+    --weight-grid-bg: 140 20% 98%;
+    --weight-item: 142 50% 45%;
+    --sticky-bar-bg: 140 30% 20%;
+    --sticky-bar-text: 0 0% 100%;
+  }
+
+  .dark {
+    --background: 140 30% 8%;
+    --foreground: 140 10% 95%;
+
+    --card: 140 25% 12%;
+    --card-foreground: 140 10% 95%;
+
+    --popover: 140 25% 12%;
+    --popover-foreground: 140 10% 95%;
+
+    --primary: 142 70% 45%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 140 20% 18%;
+    --secondary-foreground: 140 10% 90%;
+
+    --muted: 140 15% 20%;
+    --muted-foreground: 140 10% 60%;
+
+    --accent: 24 95% 53%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 142 70% 45%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 45 90% 50%;
+    --warning-foreground: 0 0% 10%;
+
+    --border: 140 15% 25%;
+    --input: 140 15% 25%;
+    --ring: 142 70% 45%;
+
+    --weight-input-bg: 140 20% 15%;
+    --weight-grid-bg: 140 15% 10%;
+    --weight-item: 142 60% 50%;
+    --sticky-bar-bg: 140 30% 15%;
+    --sticky-bar-text: 0 0% 100%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Inter', sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  /* Prevent zoom on input focus for iOS */
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
+
+@layer utilities {
+  /* Big touch target for outdoor use */
+  .touch-target {
+    @apply min-h-[56px] min-w-[56px];
+  }
+
+  /* Weight input styling */
+  .weight-input {
+    @apply text-4xl font-bold text-center bg-weight-input-bg rounded-2xl border-2 border-primary/30 focus:border-primary focus:ring-4 focus:ring-primary/20 transition-all;
+  }
+
+  /* Weight grid item */
+  .weight-item {
+    @apply bg-card border border-border rounded-xl p-3 text-center font-semibold text-lg shadow-sm transition-all active:scale-95;
+  }
+
+  /* Sticky summary bar */
+  .sticky-summary {
+    @apply fixed bottom-0 left-0 right-0 bg-sticky-bar-bg text-sticky-bar-text p-4 shadow-2xl backdrop-blur-lg;
+  }
+
+  /* Action button - large and prominent */
+  .action-btn {
+    @apply touch-target rounded-2xl font-bold text-xl shadow-lg transition-all active:scale-95 disabled:opacity-50;
+  }
+
+  /* Haptic feedback simulation via scale */
+  .haptic-press {
+    @apply active:scale-95 transition-transform duration-75;
+  }
+}
+
+/* Custom scrollbar for weight grid */
+.weight-grid::-webkit-scrollbar {
+  width: 4px;
+}
+
+.weight-grid::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+  border-radius: 2px;
+}
+
+.weight-grid::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary) / 0.5);
+  border-radius: 2px;
+}
+
+/* Animation for weight item entry */
+@keyframes weight-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.8) translateY(-10px);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.weight-item-enter {
+  animation: weight-pop 0.25s ease-out forwards;
+}
+
+/* Pulse animation for active input */
+@keyframes input-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 hsl(var(--primary) / 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px hsl(var(--primary) / 0);
+  }
+}
+
+.input-active {
+  animation: input-pulse 1.5s ease-in-out infinite;
+}
