@@ -1,4 +1,4 @@
-import { Users, Plus, Search } from 'lucide-react';
+import { Users, Plus, Search, Trash2 } from 'lucide-react';
 import { BottomNav } from '@/components/BottomNav';
 import { useCustomers } from '@/hooks/useCustomers';
 import { CustomerFormDialog } from '@/components/CustomerFormDialog';
@@ -14,14 +14,26 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 type Customer = Database['public']['Tables']['customers']['Row'];
 
 const Customers = () => {
-    const { customers, loading } = useCustomers();
+    const { customers, loading, deleteCustomer } = useCustomers();
     const [searchQuery, setSearchQuery] = useState('');
     const [dialogOpen, setDialogOpen] = useState(false);
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
 
     // Filter customers based on search only
     const filteredCustomers = customers.filter(customer => {
@@ -41,6 +53,23 @@ const Customers = () => {
     const handleEdit = (customer: Customer) => {
         setSelectedCustomer(customer);
         setDialogOpen(true);
+    };
+
+    const handleDeleteClick = (customer: Customer) => {
+        setCustomerToDelete(customer);
+        setDeleteDialogOpen(true);
+    };
+
+    const handleDeleteConfirm = async () => {
+        if (customerToDelete) {
+            try {
+                await deleteCustomer(customerToDelete.id);
+                setDeleteDialogOpen(false);
+                setCustomerToDelete(null);
+            } catch (error) {
+                console.error('Error deleting customer:', error);
+            }
+        }
     };
 
     return (
@@ -132,13 +161,23 @@ const Customers = () => {
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-right">
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => handleEdit(customer)}
-                                            >
-                                                Sửa
-                                            </Button>
+                                            <div className="flex items-center justify-end gap-2">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => handleEdit(customer)}
+                                                >
+                                                    Sửa
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                    onClick={() => handleDeleteClick(customer)}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 ))}
@@ -153,6 +192,24 @@ const Customers = () => {
                 onOpenChange={setDialogOpen}
                 customer={selectedCustomer}
             />
+
+            <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Xác nhận xóa</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Bạn có chắc chắn muốn xóa mối hàng "{customerToDelete?.name}"?
+                            Hành động này không thể hoàn tác.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Hủy</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive hover:bg-destructive/90">
+                            Xóa
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
             <BottomNav />
         </div>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useCustomers } from '@/hooks/useCustomers';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,13 +12,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -36,13 +29,34 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: CustomerFor
     const [loading, setLoading] = useState(false);
 
     const [formData, setFormData] = useState({
-        name: customer?.name || '',
-        phone: customer?.phone || '',
-        email: customer?.email || '',
-        address: customer?.address || '',
-        type: customer?.type || 'customer' as 'customer' | 'partner',
-        notes: customer?.notes || '',
+        name: '',
+        phone: '',
+        email: '',
+        address: '',
+        notes: '',
     });
+
+    // Load customer data when dialog opens or customer changes
+    useEffect(() => {
+        if (customer) {
+            setFormData({
+                name: customer.name || '',
+                phone: customer.phone || '',
+                email: customer.email || '',
+                address: customer.address || '',
+                notes: customer.notes || '',
+            });
+        } else {
+            // Reset form for new customer
+            setFormData({
+                name: '',
+                phone: '',
+                email: '',
+                address: '',
+                notes: '',
+            });
+        }
+    }, [customer, open]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -50,7 +64,7 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: CustomerFor
         if (!formData.name.trim()) {
             toast({
                 title: 'Lỗi',
-                description: 'Vui lòng nhập tên khách hàng',
+                description: 'Vui lòng nhập tên mối hàng',
                 variant: 'destructive',
             });
             return;
@@ -65,39 +79,29 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: CustomerFor
                     phone: formData.phone.trim() || null,
                     email: formData.email.trim() || null,
                     address: formData.address.trim() || null,
-                    type: formData.type,
                     notes: formData.notes.trim() || null,
                 });
                 toast({
                     title: 'Thành công',
-                    description: 'Đã cập nhật thông tin khách hàng',
+                    description: 'Đã cập nhật thông tin mối hàng',
                 });
             } else {
-                // Create new customer
+                // Create new customer (always set type as 'customer')
                 await createCustomer({
                     name: formData.name.trim(),
                     phone: formData.phone.trim() || null,
                     email: formData.email.trim() || null,
                     address: formData.address.trim() || null,
-                    type: formData.type,
+                    type: 'customer',
                     notes: formData.notes.trim() || null,
                 });
                 toast({
                     title: 'Thành công',
-                    description: 'Đã thêm khách hàng mới',
+                    description: 'Đã thêm mối hàng mới',
                 });
             }
 
             onOpenChange(false);
-            // Reset form
-            setFormData({
-                name: '',
-                phone: '',
-                email: '',
-                address: '',
-                type: 'customer',
-                notes: '',
-            });
         } catch (error) {
             toast({
                 title: 'Lỗi',
@@ -113,9 +117,9 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: CustomerFor
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader>
-                    <DialogTitle>{customer ? 'Sửa thông tin' : 'Thêm khách hàng mới'}</DialogTitle>
+                    <DialogTitle>{customer ? 'Sửa thông tin' : 'Thêm mối hàng mới'}</DialogTitle>
                     <DialogDescription>
-                        {customer ? 'Cập nhật thông tin khách hàng' : 'Nhập thông tin khách hàng mới'}
+                        {customer ? 'Cập nhật thông tin mối hàng' : 'Nhập thông tin mối hàng mới'}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -123,33 +127,15 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: CustomerFor
                     <div className="grid gap-4 py-4">
                         <div className="grid gap-2">
                             <Label htmlFor="name">
-                                Tên khách hàng <span className="text-destructive">*</span>
+                                Tên mối hàng <span className="text-destructive">*</span>
                             </Label>
                             <Input
                                 id="name"
                                 value={formData.name}
                                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                placeholder="Nhập tên khách hàng"
+                                placeholder="Nhập tên mối hàng"
                                 required
                             />
-                        </div>
-
-                        <div className="grid gap-2">
-                            <Label htmlFor="type">Loại</Label>
-                            <Select
-                                value={formData.type}
-                                onValueChange={(value: 'customer' | 'partner') =>
-                                    setFormData({ ...formData, type: value })
-                                }
-                            >
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="customer">Khách hàng</SelectItem>
-                                    <SelectItem value="partner">Đối tác</SelectItem>
-                                </SelectContent>
-                            </Select>
                         </div>
 
                         <div className="grid gap-2">
