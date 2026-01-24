@@ -1,24 +1,309 @@
-import { BarChart3 } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { BarChart3, Package, Weight, DollarSign, TrendingUp, PieChart as PieChartIcon, Calendar } from 'lucide-react';
 import { BottomNav } from '@/components/BottomNav';
+import { useTransaction } from '@/hooks/useTransaction';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, Legend, AreaChart, Area
+} from 'recharts';
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  eachDayOfInterval,
+  isSameDay,
+  startOfYear,
+  eachMonthOfInterval,
+  getQuarter
+} from 'date-fns';
+import { vi } from 'date-fns/locale';
+
+type TimePeriod = 'day' | 'month' | 'quarter';
 
 const Statistics = () => {
+  const { transactions, loading } = useTransaction();
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>('day');
+
+  // Filter completed transactions for statistics
+  const completedTransactions = useMemo(() =>
+    transactions.filter(t => t.status === 'completed'),
+    [transactions]
+  );
+
+  // Group and processed data based on timePeriod
+  const { chartData, stats, pieData } = useMemo(() => {
+    const now = new Date();
+    let data: any[] = [];
+
+    // 1. Calculate Stats based on current view
+    const totalStats = completedTransactions.reduce((acc, t) => {
+      const tWeight = t.weights.reduce((sum, w) => sum + w.weight, 0);
+      return {
+        totalBags: acc.totalBags + t.weights.length,
+        totalWeight: acc.totalWeight + tWeight,
+        totalAmount: acc.totalAmount + (tWeight * t.unitPrice)
+      };
+    }, { totalBags: 0, totalWeight: 0, totalAmount: 0 });
+
+    // 2. Prepare Chart Data
+    if (timePeriod === 'day') {
+      const start = startOfMonth(now);
+      const end = endOfMonth(now);
+      const days = eachDayOfInterval({ start, end });
+
+      data = days.map(day => {
+        const dayTxs = completedTransactions.filter(t => isSameDay(t.createdAt, day));
+        const weight = dayTxs.reduce((sum, t) => sum + t.weights.reduce((s, w) => s + w.weight, 0), 0);
+        return {
+          label: format(day, 'dd/MM'),
+          weight,
+          fullDate: format(day, 'dd/MM/yyyy')
+        };
+      });
+    } else if (timePeriod === 'month') {
+      const start = startOfYear(now);
+      const months = eachMonthOfInterval({ start, end: now });
+
+      data = months.map(month => {
+        const monthTxs = completedTransactions.filter(t =>
+          t.createdAt.getMonth() === month.getMonth() &&
+          t.createdAt.getFullYear() === month.getFullYear()
+        );
+        const weight = monthTxs.reduce((sum, t) => sum + t.weights.reduce((s, w) => s + w.weight, 0), 0);
+        return {
+          label: format(month, 'MMM', { locale: vi }),
+          weight,
+          fullDate: format(month, 'MMMM yyyy', { locale: vi })
+        };
+      });
+    } else if (timePeriod === 'quarter') {
+      data = [1, 2, 3, 4].map(q => {
+        const quarterTxs = completedTransactions.filter(t => getQuarter(t.createdAt) === q && t.createdAt.getFullYear() === now.getFullYear());
+        const weight = quarterTxs.reduce((sum, t) => sum + t.weights.reduce((s, w) => s + w.weight, 0), 0);
+        return {
+          label: `Quý ${q}`,
+          weight,
+          fullDate: `Quý ${q} - ${now.getFullYear()}`
+        };
+      });
+    }
+
+    // 3. Prepare Pie Data (Structure)
+    const riceTypeMap = completedTransactions.reduce((acc: any, t) => {
+      if (!acc[t.riceType]) acc[t.riceType] = 0;
+      acc[t.riceType] += t.weights.reduce((sum, w) => sum + w.weight, 0);
+      return acc;
+    }, {});
+    const pData = Object.entries(riceTypeMap).map(([name, value]) => ({ name, value }));
+
+    return { chartData: data, stats: totalStats, pieData: pData };
+  }, [completedTransactions, timePeriod]);
+
+  const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6'];
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('vi-VN', {
+      style: 'currency',
+      currency: 'VND',
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-background pb-20">
-      <div className="p-4">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-            <BarChart3 className="h-5 w-5 text-primary" />
+    <div className="min-h-screen bg-background pb-24 animate-fade-in">
+      <div className="p-4 space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between pt-2">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
+              <BarChart3 className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-foreground">Thống kê</h1>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Báo cáo sản lượng</p>
+            </div>
           </div>
-          <h1 className="text-xl font-bold text-foreground">Thống kê</h1>
         </div>
-        
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <BarChart3 className="h-16 w-16 text-muted-foreground/50 mb-4" />
-          <p className="text-muted-foreground">Tính năng thống kê đang phát triển</p>
-          <p className="text-sm text-muted-foreground/70 mt-2">
-            Sẽ hiển thị biểu đồ doanh thu, số lượng bao theo ngày/tuần/tháng
-          </p>
+
+        {/* Time Filters */}
+        <div className="flex p-1 bg-secondary/50 rounded-xl shadow-inner">
+          {(['day', 'month', 'quarter'] as TimePeriod[]).map((p) => (
+            <button
+              key={p}
+              onClick={() => setTimePeriod(p)}
+              className={`flex-1 py-3 px-3 text-sm font-bold rounded-lg transition-all ${timePeriod === p
+                ? 'bg-card text-primary shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+                }`}
+            >
+              {p === 'day' ? 'Ngày' : p === 'month' ? 'Tháng' : 'Quý'}
+            </button>
+          ))}
         </div>
+
+        {/* Global Stats Cards */}
+        <div className="grid grid-cols-1 gap-3">
+          <div className="bg-card border border-border rounded-2xl p-4 flex items-center gap-4 transition-all hover:shadow-md">
+            <div className="w-12 h-12 bg-success/10 rounded-xl flex items-center justify-center shrink-0">
+              <DollarSign className="w-6 h-6 text-success" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Tổng doanh thu</p>
+              <p className="text-xl font-bold text-foreground">{formatCurrency(stats.totalAmount)}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-card border border-border rounded-2xl p-4 transition-all hover:shadow-md">
+              <div className="flex items-center gap-2 mb-2">
+                <Weight className="w-4 h-4 text-primary" />
+                <span className="text-xs font-medium text-muted-foreground uppercase">Sản lượng</span>
+              </div>
+              <p className="text-xl font-bold text-foreground">{stats.totalWeight.toFixed(1)} <span className="text-sm font-normal text-muted-foreground">kg</span></p>
+            </div>
+            <div className="bg-card border border-border rounded-2xl p-4 transition-all hover:shadow-md">
+              <div className="flex items-center gap-2 mb-2">
+                <Package className="w-4 h-4 text-warning" />
+                <span className="text-xs font-medium text-muted-foreground uppercase">Số bao</span>
+              </div>
+              <p className="text-xl font-bold text-foreground">{stats.totalBags} <span className="text-sm font-normal text-muted-foreground">bao</span></p>
+            </div>
+          </div>
+        </div>
+
+        {/* Charts Section */}
+        <div className="space-y-4">
+          {/* Main Chart */}
+          <div className="bg-card border border-border rounded-2xl p-4">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-primary" />
+                <h2 className="text-sm font-bold uppercase tracking-wide">
+                  {timePeriod === 'day' ? 'Sản lượng trong tháng' : timePeriod === 'month' ? 'Sản lượng trong năm' : 'Sản lượng theo quý'}
+                </h2>
+              </div>
+              <Calendar className="w-4 h-4 text-muted-foreground" />
+            </div>
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                {timePeriod === 'day' ? (
+                  <AreaChart data={chartData}>
+                    <defs>
+                      <linearGradient id="colorWeight" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.1} />
+                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                    <XAxis
+                      dataKey="label"
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 10, fill: '#64748b' }}
+                      interval={4}
+                    />
+                    <YAxis
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 10, fill: '#64748b' }}
+                      unit="kg"
+                    />
+                    <Tooltip
+                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                      labelStyle={{ fontWeight: 'bold', marginBottom: '4px' }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="weight"
+                      name="Sản lượng"
+                      stroke="#10b981"
+                      strokeWidth={3}
+                      fillOpacity={1}
+                      fill="url(#colorWeight)"
+                    />
+                  </AreaChart>
+                ) : (
+                  <BarChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                    <XAxis
+                      dataKey="label"
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 11, fill: '#64748b' }}
+                    />
+                    <YAxis
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 10, fill: '#64748b' }}
+                      unit="kg"
+                    />
+                    <Tooltip
+                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                      cursor={{ fill: 'transparent' }}
+                    />
+                    <Bar
+                      dataKey="weight"
+                      name="Sản lượng"
+                      fill="#10b981"
+                      radius={[6, 6, 0, 0]}
+                      barSize={timePeriod === 'quarter' ? 50 : 20}
+                    />
+                  </BarChart>
+                )}
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4">
+            {/* Rice Type Structure */}
+            <div className="bg-card border border-border rounded-2xl p-4">
+              <div className="flex items-center gap-2 mb-4">
+                <PieChartIcon className="w-4 h-4 text-primary" />
+                <h2 className="text-sm font-bold uppercase tracking-wide">Cơ cấu loại gạo</h2>
+              </div>
+              <div className="h-64 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={pieData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={85}
+                      paddingAngle={5}
+                      dataKey="value"
+                    >
+                      {pieData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                      formatter={(value: number) => [`${value.toFixed(1)} kg`, 'Sản lượng']}
+                    />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Detail List or Footer */}
+        {completedTransactions.length === 0 && (
+          <div className="py-12 text-center bg-card border border-dashed border-border rounded-2xl">
+            <Package className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
+            <p className="text-muted-foreground italic">Chưa có đủ dữ liệu để hiển thị biểu đồ chi tiết.</p>
+          </div>
+        )}
       </div>
       <BottomNav />
     </div>
