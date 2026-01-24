@@ -1,8 +1,9 @@
-import { Users, Plus, Search, Trash2 } from 'lucide-react';
+import { Users, Plus, Search, Trash2, Package, Scale, Banknote } from 'lucide-react';
 import { BottomNav } from '@/components/BottomNav';
 import { useCustomers } from '@/hooks/useCustomers';
+import { useTransaction } from '@/hooks/useTransaction';
 import { CustomerFormDialog } from '@/components/CustomerFormDialog';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import type { Database } from '@/integrations/supabase/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,13 +28,68 @@ import {
 
 type Customer = Database['public']['Tables']['customers']['Row'];
 
+interface CustomerStats {
+    totalBags: number;
+    totalWeight: number;
+    totalAmount: number;
+    riceTypes: Set<string>;
+}
+
+const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('vi-VN', {
+        style: 'currency',
+        currency: 'VND',
+        maximumFractionDigits: 0,
+    }).format(amount);
+};
+
 const Customers = () => {
-    const { customers, loading, deleteCustomer } = useCustomers();
+    const { customers, loading: customersLoading, deleteCustomer } = useCustomers();
+    const { transactions, loading: transactionsLoading } = useTransaction();
     const [searchQuery, setSearchQuery] = useState('');
     const [dialogOpen, setDialogOpen] = useState(false);
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
+
+    // Calculate stats for each customer
+    const customerStats = useMemo(() => {
+        const stats = new Map<string, CustomerStats>();
+
+        // Get completed transactions only
+        const completedTransactions = transactions.filter(t => t.status === 'completed');
+
+        completedTransactions.forEach(tx => {
+            const customerName = tx.customerName;
+            if (!stats.has(customerName)) {
+                stats.set(customerName, {
+                    totalBags: 0,
+                    totalWeight: 0,
+                    totalAmount: 0,
+                    riceTypes: new Set<string>()
+                });
+            }
+
+            const stat = stats.get(customerName)!;
+            stat.totalBags += tx.weights.length;
+            stat.totalWeight += tx.weights.reduce((sum, w) => sum + w.weight, 0);
+
+            // Calculate amount based on batches or legacy
+            if (tx.riceBatches && tx.riceBatches.length > 0) {
+                tx.riceBatches.forEach(batch => {
+                    stat.riceTypes.add(batch.riceType);
+                    const batchWeights = tx.weights.filter(w => w.riceBatchId === batch.id);
+                    const batchWeight = batchWeights.reduce((sum, w) => sum + w.weight, 0);
+                    stat.totalAmount += batchWeight * batch.unitPrice;
+                });
+            } else {
+                stat.riceTypes.add(tx.riceType);
+                stat.totalAmount += stat.totalWeight * tx.unitPrice;
+            }
+        });
+
+        return stats;
+    }, [transactions]);
 
     // Filter customers based on search only
     const filteredCustomers = customers.filter(customer => {
@@ -71,6 +127,8 @@ const Customers = () => {
             }
         }
     };
+
+    const loading = customersLoading || transactionsLoading;
 
     return (
         <div className="min-h-screen bg-background pb-20">
@@ -128,61 +186,114 @@ const Customers = () => {
                         </p>
                     </div>
                 ) : (
-                    <div className="bg-card rounded-lg border overflow-hidden">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Tên</TableHead>
-                                    <TableHead>Liên hệ</TableHead>
-                                    <TableHead className="text-right">Thao tác</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {filteredCustomers.map((customer) => (
-                                    <TableRow key={customer.id} className="cursor-pointer hover:bg-muted/50">
-                                        <TableCell className="font-medium">
-                                            <div>
-                                                <p className="font-semibold">{customer.name}</p>
-                                                {customer.address && (
-                                                    <p className="text-xs text-muted-foreground truncate max-w-[200px]">
-                                                        {customer.address}
-                                                    </p>
-                                                )}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="text-sm">
-                                                {customer.phone && <p>{customer.phone}</p>}
+                    <div className="space-y-3">
+                        {filteredCustomers.map((customer) => {
+                            const stats = customerStats.get(customer.name);
+                            const hasTransactions = stats && stats.totalBags > 0;
+
+                            return (
+                                <div
+                                    key={customer.id}
+                                    className="bg-card rounded-xl p-4 border border-border"
+                                >
+                                    {/* Customer Info */}
+                                    <div className="flex items-start justify-between mb-3">
+                                        <div className="flex-1">
+                                            <h3 className="font-bold text-foreground text-lg">
+                                                {customer.name}
+                                            </h3>
+                                            <div className="text-sm text-muted-foreground mt-1 space-y-0.5">
+                                                {customer.phone && <p>📞 {customer.phone}</p>}
                                                 {customer.email && (
-                                                    <p className="text-xs text-muted-foreground truncate max-w-[150px]">
-                                                        {customer.email}
-                                                    </p>
+                                                    <p className="truncate">✉️ {customer.email}</p>
+                                                )}
+                                                {customer.address && (
+                                                    <p className="truncate">📍 {customer.address}</p>
                                                 )}
                                             </div>
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <div className="flex items-center justify-end gap-2">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => handleEdit(customer)}
-                                                >
-                                                    Sửa
-                                                </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                                    onClick={() => handleDeleteClick(customer)}
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => handleEdit(customer)}
+                                            >
+                                                Sửa
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                onClick={() => handleDeleteClick(customer)}
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    </div>
+
+                                    {/* Transaction Stats */}
+                                    {hasTransactions ? (
+                                        <div className="border-t border-border pt-3 mt-3">
+                                            <p className="text-xs text-muted-foreground mb-2 uppercase tracking-wide">
+                                                Thống kê giao dịch
+                                            </p>
+                                            <div className="grid grid-cols-3 gap-3">
+                                                <div className="bg-primary/5 rounded-lg p-2">
+                                                    <div className="flex items-center gap-1 text-muted-foreground mb-1">
+                                                        <Package className="w-3 h-3" />
+                                                        <span className="text-2xs">Bao</span>
+                                                    </div>
+                                                    <p className="text-sm font-bold text-foreground">
+                                                        {stats.totalBags}
+                                                    </p>
+                                                </div>
+                                                <div className="bg-primary/5 rounded-lg p-2">
+                                                    <div className="flex items-center gap-1 text-muted-foreground mb-1">
+                                                        <Scale className="w-3 h-3" />
+                                                        <span className="text-2xs">Kg</span>
+                                                    </div>
+                                                    <p className="text-sm font-bold text-foreground">
+                                                        {stats.totalWeight.toFixed(0)}
+                                                    </p>
+                                                </div>
+                                                <div className="bg-success/5 rounded-lg p-2">
+                                                    <div className="flex items-center gap-1 text-muted-foreground mb-1">
+                                                        <Banknote className="w-3 h-3" />
+                                                        <span className="text-2xs">Tiền</span>
+                                                    </div>
+                                                    <p className="text-xs font-bold text-success">
+                                                        {(stats.totalAmount / 1000000).toFixed(1)}M
+                                                    </p>
+                                                </div>
                                             </div>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
+                                            {stats.riceTypes.size > 0 && (
+                                                <div className="mt-2">
+                                                    <p className="text-2xs text-muted-foreground mb-1">
+                                                        Loại gạo:
+                                                    </p>
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {Array.from(stats.riceTypes).map(type => (
+                                                            <span
+                                                                key={type}
+                                                                className="text-2xs bg-secondary px-2 py-0.5 rounded-full text-foreground"
+                                                            >
+                                                                {type}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="border-t border-border pt-3 mt-3">
+                                            <p className="text-xs text-muted-foreground text-center">
+                                                Chưa có giao dịch nào
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
                     </div>
                 )}
             </div>
