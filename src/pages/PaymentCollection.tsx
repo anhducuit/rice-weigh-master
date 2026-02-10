@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef } from 'react';
-import { Banknote, Check, Share2, Eye, CheckCircle2 } from 'lucide-react';
+import { Banknote, Check, Share2, Eye, CheckCircle2, Lock } from 'lucide-react';
 import { BottomNav } from '@/components/BottomNav';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useTransaction } from '@/hooks/useTransaction';
@@ -37,6 +37,12 @@ const PaymentCollection = () => {
     const [isSharing, setIsSharing] = useState(false);
     const [isMarkingPaid, setIsMarkingPaid] = useState(false);
     const invoiceRef = useRef<HTMLDivElement>(null);
+
+    // Payment password state
+    const [showPaymentPassword, setShowPaymentPassword] = useState(false);
+    const [paymentPassword, setPaymentPassword] = useState('');
+    const [paymentPasswordError, setPaymentPasswordError] = useState('');
+    const PAYMENT_PASSWORD = '541996';
 
     // Get active customers
     const activeCustomers = customers.filter(c => c.is_active);
@@ -210,6 +216,21 @@ const PaymentCollection = () => {
             alert('Có lỗi xảy ra. Vui lòng thử lại.');
         } finally {
             setIsMarkingPaid(false);
+        }
+    };
+
+    const handlePaymentClick = () => {
+        setShowPaymentPassword(true);
+        setPaymentPassword('');
+        setPaymentPasswordError('');
+    };
+
+    const handlePaymentPasswordSubmit = () => {
+        if (paymentPassword === PAYMENT_PASSWORD) {
+            setShowPaymentPassword(false);
+            handleMarkAsPaid();
+        } else {
+            setPaymentPasswordError('Sai mật khẩu. Vui lòng thử lại.');
         }
     };
 
@@ -427,7 +448,7 @@ const PaymentCollection = () => {
                                     {!viewInvoiceTransaction && (
                                         <Button
                                             className="flex-1"
-                                            onClick={handleMarkAsPaid}
+                                            onClick={handlePaymentClick}
                                             disabled={isMarkingPaid}
                                         >
                                             <Check className="w-4 h-4 mr-2" />
@@ -440,6 +461,50 @@ const PaymentCollection = () => {
                     </div>
                 )}
             </div>
+
+            {/* Payment Password Modal */}
+            {showPaymentPassword && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+                    <div className="bg-background rounded-2xl max-w-sm w-full shadow-2xl">
+                        <div className="p-6">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                                    <Lock className="w-5 h-5 text-primary" />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-foreground">Xác nhận thanh toán</h3>
+                                    <p className="text-sm text-muted-foreground">Nhập mật khẩu để xác nhận</p>
+                                </div>
+                            </div>
+                            <div className="mb-4">
+                                <input
+                                    type="password"
+                                    placeholder="Nhập mật khẩu..."
+                                    value={paymentPassword}
+                                    onChange={(e) => {
+                                        setPaymentPassword(e.target.value);
+                                        setPaymentPasswordError('');
+                                    }}
+                                    onKeyDown={(e) => e.key === 'Enter' && handlePaymentPasswordSubmit()}
+                                    className={`w-full h-10 px-4 rounded-lg border-2 bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 ${paymentPasswordError ? 'border-destructive' : 'border-border focus:border-primary'}`}
+                                    autoFocus
+                                />
+                                {paymentPasswordError && (
+                                    <p className="text-sm text-destructive mt-2">{paymentPasswordError}</p>
+                                )}
+                            </div>
+                            <div className="flex gap-2">
+                                <Button variant="outline" className="flex-1" onClick={() => setShowPaymentPassword(false)}>
+                                    Hủy
+                                </Button>
+                                <Button className="flex-1" onClick={handlePaymentPasswordSubmit}>
+                                    Xác nhận
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <BottomNav />
         </div>
