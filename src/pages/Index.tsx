@@ -18,6 +18,7 @@ const Index = () => {
     deleteWeight,
     completeTransaction,
     cancelTransaction,
+    deleteTransaction,
     loading,
   } = useTransaction();
 
@@ -80,6 +81,7 @@ const Index = () => {
     <Dashboard
       recentTransactions={recentTransactions}
       onNewTransaction={handleNewTransaction}
+      onDeleteTransaction={deleteTransaction}
       loading={loading}
     />
   );

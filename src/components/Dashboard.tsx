@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef } from 'react';
-import { Plus, Clock, Truck, Calendar, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { Plus, Clock, Truck, Calendar, ChevronLeft, ChevronRight, X, Trash2, Lock, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Transaction, TransactionSummary } from '@/types/transaction';
 import { BottomNav } from './BottomNav';
 import { TransactionDetailModal } from './TransactionDetailModal';
@@ -9,6 +10,7 @@ import { format, isSameDay } from 'date-fns';
 interface DashboardProps {
   recentTransactions: Transaction[];
   onNewTransaction: () => void;
+  onDeleteTransaction: (id: string) => Promise<void>;
   loading?: boolean;
 }
 
@@ -76,11 +78,20 @@ const calculateTransactionSummary = (tx: Transaction): TransactionSummary => {
   return { totalBags, totalWeight, totalAmount, batchSummaries };
 };
 
-export const Dashboard = ({ recentTransactions, onNewTransaction, loading }: DashboardProps) => {
+export const Dashboard = ({ recentTransactions, onNewTransaction, onDeleteTransaction, loading }: DashboardProps) => {
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+
+  // Delete states
+  const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null);
+  const [deleteStep, setDeleteStep] = useState<1 | 2>(1);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deletePasswordError, setDeletePasswordError] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const DELETE_PASSWORD = '541996';
 
   // Filter transactions by date
   const filteredTransactions = useMemo(() => {
@@ -114,6 +125,44 @@ export const Dashboard = ({ recentTransactions, onNewTransaction, loading }: Das
 
   const handleClearFilter = () => {
     setSelectedDate('');
+  };
+
+  // Delete handlers
+  const handleDeleteClick = (e: React.MouseEvent, tx: Transaction) => {
+    e.stopPropagation();
+    setDeleteTarget(tx);
+    setDeleteStep(1);
+    setDeletePassword('');
+    setDeletePasswordError('');
+  };
+
+  const handlePasswordSubmit = () => {
+    if (deletePassword === DELETE_PASSWORD) {
+      setDeleteStep(2);
+      setDeletePasswordError('');
+    } else {
+      setDeletePasswordError('Sai mật khẩu. Vui lòng thử lại.');
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      await onDeleteTransaction(deleteTarget.id);
+      setDeleteTarget(null);
+    } catch (err) {
+      alert('Xóa thất bại. Vui lòng thử lại.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setDeleteTarget(null);
+    setDeleteStep(1);
+    setDeletePassword('');
+    setDeletePasswordError('');
   };
 
   if (loading) {
@@ -244,8 +293,17 @@ export const Dashboard = ({ recentTransactions, onNewTransaction, loading }: Das
                         </span>
                       </div>
                     </div>
-                    <div className="text-xs text-muted-foreground shrink-0">
-                      {formatDate(tx.createdAt)}
+                    <div className="flex flex-col items-end gap-2 shrink-0">
+                      <span className="text-xs text-muted-foreground">
+                        {formatDate(tx.createdAt)}
+                      </span>
+                      <button
+                        onClick={(e) => handleDeleteClick(e, tx)}
+                        className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                        title="Xóa chuyến xe"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
                 );
@@ -298,6 +356,96 @@ export const Dashboard = ({ recentTransactions, onNewTransaction, loading }: Das
           setSelectedTransaction(null);
         }}
       />
+
+      {/* Delete Confirmation Modal - 2 Steps */}
+      {deleteTarget && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-background rounded-2xl max-w-sm w-full shadow-2xl">
+            {deleteStep === 1 ? (
+              /* Step 1: Password */
+              <div className="p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 bg-destructive/10 rounded-full flex items-center justify-center">
+                    <Lock className="w-5 h-5 text-destructive" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-foreground">Xác thực bảo mật</h3>
+                    <p className="text-sm text-muted-foreground">Nhập mật khẩu để tiếp tục</p>
+                  </div>
+                </div>
+
+                <div className="mb-4">
+                  <Input
+                    type="password"
+                    placeholder="Nhập mật khẩu..."
+                    value={deletePassword}
+                    onChange={(e) => {
+                      setDeletePassword(e.target.value);
+                      setDeletePasswordError('');
+                    }}
+                    onKeyDown={(e) => e.key === 'Enter' && handlePasswordSubmit()}
+                    className={deletePasswordError ? 'border-destructive' : ''}
+                    autoFocus
+                  />
+                  {deletePasswordError && (
+                    <p className="text-sm text-destructive mt-2">{deletePasswordError}</p>
+                  )}
+                </div>
+
+                <div className="flex gap-2">
+                  <Button variant="outline" className="flex-1" onClick={handleCancelDelete}>
+                    Hủy
+                  </Button>
+                  <Button className="flex-1" onClick={handlePasswordSubmit}>
+                    Tiếp tục
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              /* Step 2: Confirm Delete */
+              <div className="p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 bg-destructive/10 rounded-full flex items-center justify-center">
+                    <AlertTriangle className="w-5 h-5 text-destructive" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-foreground">Xác nhận xóa</h3>
+                    <p className="text-sm text-muted-foreground">Hành động không thể hoàn tác</p>
+                  </div>
+                </div>
+
+                <div className="bg-destructive/5 border border-destructive/20 rounded-xl p-4 mb-4">
+                  <p className="text-sm text-foreground mb-2">
+                    Bạn sắp xóa chuyến xe:
+                  </p>
+                  <div className="text-sm space-y-1">
+                    <p className="font-bold">🚛 {deleteTarget.licensePlate}</p>
+                    <p className="text-muted-foreground">👤 {deleteTarget.customerName}</p>
+                    <p className="text-muted-foreground">📦 {deleteTarget.weights.length} bao</p>
+                  </div>
+                  <p className="text-xs text-destructive mt-3">
+                    ⚠️ Toàn bộ dữ liệu cân, lô gạo và thông tin thanh toán sẽ bị xóa vĩnh viễn.
+                  </p>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button variant="outline" className="flex-1" onClick={handleCancelDelete}>
+                    Hủy
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    className="flex-1"
+                    onClick={handleConfirmDelete}
+                    disabled={isDeleting}
+                  >
+                    {isDeleting ? 'Đang xóa...' : 'Xóa chuyến xe'}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 };

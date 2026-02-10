@@ -312,6 +312,47 @@ export const useTransaction = () => {
     }
   }, [currentTransaction, fetchTransactions]);
 
+  // Delete any transaction by ID (for completed transactions)
+  const deleteTransaction = useCallback(async (transactionId: string) => {
+    try {
+      // Delete weighing details
+      const { error: weightsError } = await supabase
+        .from('weighing_details')
+        .delete()
+        .eq('transaction_id', transactionId);
+
+      if (weightsError) {
+        console.error('Failed to delete weighing details:', weightsError);
+      }
+
+      // Delete rice batches
+      const { error: batchesError } = await supabase
+        .from('rice_batches')
+        .delete()
+        .eq('transaction_id', transactionId);
+
+      if (batchesError) {
+        console.error('Failed to delete rice batches:', batchesError);
+      }
+
+      // Delete the transaction itself
+      const { error: transactionError } = await supabase
+        .from('transactions')
+        .delete()
+        .eq('id', transactionId);
+
+      if (transactionError) {
+        throw transactionError;
+      }
+
+      // Refresh transactions list
+      await fetchTransactions();
+    } catch (e) {
+      console.error('Failed to delete transaction:', e);
+      throw e;
+    }
+  }, [fetchTransactions]);
+
   const summary: TransactionSummary = useMemo(() => {
     if (!currentTransaction) {
       return { totalBags: 0, totalWeight: 0, totalAmount: 0, batchSummaries: [] };
@@ -358,6 +399,7 @@ export const useTransaction = () => {
     deleteWeight,
     completeTransaction,
     cancelTransaction,
+    deleteTransaction,
     refreshTransactions: fetchTransactions,
   };
 };
