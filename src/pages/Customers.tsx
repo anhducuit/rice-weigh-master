@@ -45,7 +45,7 @@ const formatCurrency = (amount: number) => {
 };
 
 const Customers = () => {
-    const { customers, loading: customersLoading, deleteCustomer } = useCustomers();
+    const { customers, loading: customersLoading, deleteCustomer, createCustomer, updateCustomer } = useCustomers();
     const { transactions, loading: transactionsLoading } = useTransaction();
     const [searchQuery, setSearchQuery] = useState('');
     const [dialogOpen, setDialogOpen] = useState(false);
@@ -304,6 +304,8 @@ const Customers = () => {
                 open={dialogOpen}
                 onOpenChange={setDialogOpen}
                 customer={selectedCustomer}
+                onCreateCustomer={createCustomer}
+                onUpdateCustomer={updateCustomer}
             />
 
             <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

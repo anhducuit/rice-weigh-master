@@ -77,12 +77,12 @@ export function useCustomers() {
         }
     };
 
-    // Delete customer (soft delete by setting is_active to false)
+    // Delete customer (hard delete from database)
     const deleteCustomer = async (id: string) => {
         try {
             const { error: deleteError } = await supabase
                 .from('customers')
-                .update({ is_active: false })
+                .delete()
                 .eq('id', id);
 
             if (deleteError) throw deleteError;

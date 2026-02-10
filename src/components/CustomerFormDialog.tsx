@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useCustomers } from '@/hooks/useCustomers';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -16,15 +15,18 @@ import { useToast } from '@/hooks/use-toast';
 import type { Database } from '@/integrations/supabase/types';
 
 type Customer = Database['public']['Tables']['customers']['Row'];
+type CustomerInsert = Database['public']['Tables']['customers']['Insert'];
+type CustomerUpdate = Database['public']['Tables']['customers']['Update'];
 
 interface CustomerFormDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     customer?: Customer | null;
+    onCreateCustomer: (data: CustomerInsert) => Promise<any>;
+    onUpdateCustomer: (id: string, data: CustomerUpdate) => Promise<any>;
 }
 
-export function CustomerFormDialog({ open, onOpenChange, customer }: CustomerFormDialogProps) {
-    const { createCustomer, updateCustomer } = useCustomers();
+export function CustomerFormDialog({ open, onOpenChange, customer, onCreateCustomer, onUpdateCustomer }: CustomerFormDialogProps) {
     const { toast } = useToast();
     const [loading, setLoading] = useState(false);
 
@@ -74,7 +76,7 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: CustomerFor
         try {
             if (customer) {
                 // Update existing customer
-                await updateCustomer(customer.id, {
+                await onUpdateCustomer(customer.id, {
                     name: formData.name.trim(),
                     phone: formData.phone.trim() || null,
                     email: formData.email.trim() || null,
@@ -87,7 +89,7 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: CustomerFor
                 });
             } else {
                 // Create new customer (always set type as 'customer')
-                await createCustomer({
+                await onCreateCustomer({
                     name: formData.name.trim(),
                     phone: formData.phone.trim() || null,
                     email: formData.email.trim() || null,

@@ -162,13 +162,13 @@ export const Dashboard = ({ recentTransactions, onNewTransaction, loading }: Das
 
           {/* Date Filter */}
           <div className="flex gap-2">
-            <div className="relative flex-1">
+            <div className="relative">
               <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
               <input
                 type="date"
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
-                className="w-full h-10 pl-10 pr-4 rounded-lg border-2 border-border bg-card text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="h-10 pl-10 pr-3 rounded-lg border-2 border-border bg-card text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 text-sm"
               />
             </div>
             {selectedDate && (
