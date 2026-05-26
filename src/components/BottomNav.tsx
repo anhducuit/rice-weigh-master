@@ -2,12 +2,9 @@ import { LayoutDashboard, BarChart3, Users, Banknote, Calculator } from 'lucide-
 import { NavLink } from './NavLink';
 
 const navItems = [
-  { to: '/', icon: LayoutDashboard, label: 'Tổng quan' },
-  { to: '/thong-ke', icon: BarChart3, label: 'Thống kê' },
-  { to: '/khach-hang', icon: Users, label: 'Mối hàng' },
-  { to: '/thu-tien', icon: Banknote, label: 'Thu tiền' },
-  { to: '/may-tinh', icon: Calculator, label: 'Máy tính' },
+  { to: '/', icon: LayoutDashboard, label: 'Hóa đơn' },
 ];
+
 
 export const BottomNav = () => {
   return (
