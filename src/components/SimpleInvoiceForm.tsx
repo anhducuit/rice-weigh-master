@@ -14,7 +14,12 @@ export const SimpleInvoiceForm = () => {
     weightTons: 0,
     unitPrice: 0,
     totalAmount: 0,
+    bags50kg: '',
+    bags25kg: '',
+    looseBagsCount: '',
+    looseBagsWeight: '',
   });
+
 
   const [showPreview, setShowPreview] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
@@ -104,7 +109,12 @@ export const SimpleInvoiceForm = () => {
               weightTons: 0,
               unitPrice: 0,
               totalAmount: 0,
+              bags50kg: '',
+              bags25kg: '',
+              looseBagsCount: '',
+              looseBagsWeight: '',
             })} className="text-muted-foreground gap-1">
+
               <RefreshCw className="w-4 h-4" /> Làm mới
             </Button>
           </div>
@@ -181,7 +191,61 @@ export const SimpleInvoiceForm = () => {
                 className={inputClass}
               />
             </div>
+
+            {/* Packaging Section */}
+            <div className="mt-4 space-y-4 p-4 bg-muted/50 rounded-2xl border-2 border-dashed border-border">
+              <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                📦 Phần bao bì (Ghi chú)
+              </h3>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground ml-1">Số bao 50kg</label>
+                  <input
+                    type="number"
+                    placeholder="0"
+                    value={formData.bags50kg}
+                    onChange={(e) => setFormData(prev => ({ ...prev, bags50kg: e.target.value }))}
+                    className="w-full h-11 px-4 text-base rounded-xl border-2 border-border bg-card focus:border-primary focus:outline-none"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground ml-1">Số bao 25kg</label>
+                  <input
+                    type="number"
+                    placeholder="0"
+                    value={formData.bags25kg}
+                    onChange={(e) => setFormData(prev => ({ ...prev, bags25kg: e.target.value }))}
+                    className="w-full h-11 px-4 text-base rounded-xl border-2 border-border bg-card focus:border-primary focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground ml-1">Số bao lẻ</label>
+                  <input
+                    type="number"
+                    placeholder="0"
+                    value={formData.looseBagsCount}
+                    onChange={(e) => setFormData(prev => ({ ...prev, looseBagsCount: e.target.value }))}
+                    className="w-full h-11 px-4 text-base rounded-xl border-2 border-border bg-card focus:border-primary focus:outline-none"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground ml-1">Kg bao lẻ</label>
+                  <input
+                    type="number"
+                    placeholder="0"
+                    value={formData.looseBagsWeight}
+                    onChange={(e) => setFormData(prev => ({ ...prev, looseBagsWeight: e.target.value }))}
+                    className="w-full h-11 px-4 text-base rounded-xl border-2 border-border bg-card focus:border-primary focus:outline-none"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
+
 
           <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10">
             <div className="flex justify-between items-center">

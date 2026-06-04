@@ -10,8 +10,13 @@ interface SimpleInvoicePreviewProps {
     weightTons: number;
     unitPrice: number;
     totalAmount: number;
+    bags50kg?: string | number;
+    bags25kg?: string | number;
+    looseBagsCount?: string | number;
+    looseBagsWeight?: string | number;
   };
 }
+
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('vi-VN', {
@@ -72,6 +77,36 @@ export const SimpleInvoicePreview = ({ data }: SimpleInvoicePreviewProps) => {
           </div>
         </div>
       </div>
+
+      {/* Packaging Section */}
+      {(data.bags50kg || data.bags25kg || data.looseBagsCount) && (
+        <div className="mb-4 pt-2 border-t border-gray-100">
+          <h2 className="text-xs font-bold text-gray-400 mb-2 uppercase tracking-widest">Ghi chú bao bì:</h2>
+          <div className="grid grid-cols-2 gap-y-1 gap-x-4">
+            {data.bags50kg && (
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-gray-500 italic">- Bao 50kg:</span>
+                <span className="font-bold text-gray-700">{data.bags50kg} bao</span>
+              </div>
+            )}
+            {data.bags25kg && (
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-gray-500 italic">- Bao 25kg:</span>
+                <span className="font-bold text-gray-700">{data.bags25kg} bao</span>
+              </div>
+            )}
+            {data.looseBagsCount && (
+              <div className="flex justify-between items-center text-xs col-span-2">
+                <span className="text-gray-500 italic">- Bao lẻ:</span>
+                <span className="font-bold text-gray-700">
+                  {data.looseBagsCount} bao ({data.looseBagsWeight || 0} kg)
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
 
       {/* Grand Total */}
       <div className="border-t-2 border-gray-800 pt-4 space-y-3">
