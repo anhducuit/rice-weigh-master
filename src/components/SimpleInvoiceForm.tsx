@@ -198,17 +198,34 @@ export const SimpleInvoiceForm = () => {
                 <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
                   📦 Phần bao bì (Ghi chú)
                 </h3>
-                <div className="text-xs font-bold text-primary">
-                  Tổng: {(() => {
-                    const b50 = (parseFloat(formData.bags50kg as string) || 0) * 50;
-                    const b25 = (parseFloat(formData.bags25kg as string) || 0) * 25;
-                    const bLoose = formData.looseBags.reduce((acc, curr) => 
-                      acc + (parseFloat(curr.count as string) || 0) * (parseFloat(curr.weight as string) || 0), 0);
-                    const total = b50 + b25 + bLoose;
-                    return `${total.toLocaleString()} kg (~ ${(total / 1000).toFixed(2)} tấn)`;
-                  })()}
+                <div className="text-right">
+                  <div className="text-xs font-bold text-primary">
+                    Tổng: {(() => {
+                      const b50 = (parseFloat(formData.bags50kg as string) || 0) * 50;
+                      const b25 = (parseFloat(formData.bags25kg as string) || 0) * 25;
+                      const bLoose = formData.looseBags.reduce((acc, curr) => 
+                        acc + (parseFloat(curr.count as string) || 0) * (parseFloat(curr.weight as string) || 0), 0);
+                      const total = b50 + b25 + bLoose;
+                      
+                      const isMismatched = Math.abs(total - formData.weightKg) > 0.1 && formData.weightKg > 0;
+                      
+                      return (
+                        <div className="flex flex-col items-end gap-1">
+                          <span className={isMismatched ? "text-destructive animate-pulse" : ""}>
+                            {total.toLocaleString()} kg (~ {(total / 1000).toFixed(2)} tấn)
+                          </span>
+                          {isMismatched && (
+                            <span className="text-[10px] bg-destructive/10 px-2 py-0.5 rounded-full flex items-center gap-1">
+                              ⚠️ Lệch {Math.abs(total - formData.weightKg).toLocaleString()} kg so với mục Kg ở trên
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
                 </div>
               </div>
+
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">

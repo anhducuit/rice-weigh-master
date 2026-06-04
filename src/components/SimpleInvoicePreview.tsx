@@ -108,18 +108,38 @@ export const SimpleInvoicePreview = ({ data }: SimpleInvoicePreviewProps) => {
             </div>
             
             {/* Packaging Total Summary */}
-            <div className="flex justify-between items-center pt-2 mt-1 border-t border-gray-50 border-dashed text-[11px]">
-              <span className="text-gray-400 font-medium uppercase tracking-tighter">Tổng khối lượng bao bì:</span>
-              <span className="font-extrabold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
-                {(() => {
-                  const b50 = (parseFloat(data.bags50kg as string) || 0) * 50;
-                  const b25 = (parseFloat(data.bags25kg as string) || 0) * 25;
-                  const bLoose = data.looseBags?.reduce((acc, curr) => 
-                    acc + (parseFloat(curr.count as string) || 0) * (parseFloat(curr.weight as string) || 0), 0) || 0;
-                  const total = b50 + b25 + bLoose;
-                  return `${total.toLocaleString()} kg (~ ${(total / 1000).toFixed(2)} tấn)`;
-                })()}
-              </span>
+            <div className="flex flex-col items-end pt-2 mt-1 border-t border-gray-50 border-dashed">
+              <div className="flex justify-between items-center w-full text-[11px]">
+                <span className="text-gray-400 font-medium uppercase tracking-tighter">Tổng khối lượng bao bì:</span>
+                <span className="font-extrabold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+                  {(() => {
+                    const b50 = (parseFloat(data.bags50kg as string) || 0) * 50;
+                    const b25 = (parseFloat(data.bags25kg as string) || 0) * 25;
+                    const bLoose = data.looseBags?.reduce((acc, curr) => 
+                      acc + (parseFloat(curr.count as string) || 0) * (parseFloat(curr.weight as string) || 0), 0) || 0;
+                    const total = b50 + b25 + bLoose;
+                    return `${total.toLocaleString()} kg (~ ${(total / 1000).toFixed(2)} tấn)`;
+                  })()}
+                </span>
+              </div>
+              
+              {(() => {
+                const b50 = (parseFloat(data.bags50kg as string) || 0) * 50;
+                const b25 = (parseFloat(data.bags25kg as string) || 0) * 25;
+                const bLoose = data.looseBags?.reduce((acc, curr) => 
+                  acc + (parseFloat(curr.count as string) || 0) * (parseFloat(curr.weight as string) || 0), 0) || 0;
+                const total = b50 + b25 + bLoose;
+                const isMismatched = Math.abs(total - data.weightKg) > 0.1 && data.weightKg > 0;
+                
+                if (isMismatched) {
+                  return (
+                    <div className="text-[9px] text-red-500 font-bold mt-1 italic">
+                      ⚠️ Khối lượng bao bì lệch {Math.abs(total - data.weightKg).toLocaleString()} kg so với trọng lượng gạo
+                    </div>
+                  );
+                }
+                return null;
+              })()}
             </div>
           </div>
         </div>
