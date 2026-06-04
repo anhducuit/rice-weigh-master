@@ -12,10 +12,11 @@ interface SimpleInvoicePreviewProps {
     totalAmount: number;
     bags50kg?: string | number;
     bags25kg?: string | number;
-    looseBagsCount?: string | number;
-    looseBagsWeight?: string | number;
+    looseBags?: { id: string; count: string | number; weight: string | number }[];
   };
 }
+
+
 
 
 const formatCurrency = (amount: number) => {
@@ -79,33 +80,51 @@ export const SimpleInvoicePreview = ({ data }: SimpleInvoicePreviewProps) => {
       </div>
 
       {/* Packaging Section */}
-      {(data.bags50kg || data.bags25kg || data.looseBagsCount) && (
+      {(data.bags50kg || data.bags25kg || (data.looseBags && data.looseBags.some(b => b.count))) && (
         <div className="mb-4 pt-2 border-t border-gray-100">
           <h2 className="text-xs font-bold text-gray-400 mb-2 uppercase tracking-widest">Ghi chú bao bì:</h2>
-          <div className="grid grid-cols-2 gap-y-1 gap-x-4">
-            {data.bags50kg && (
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-gray-500 italic">- Bao 50kg:</span>
-                <span className="font-bold text-gray-700">{data.bags50kg} bao</span>
-              </div>
-            )}
-            {data.bags25kg && (
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-gray-500 italic">- Bao 25kg:</span>
-                <span className="font-bold text-gray-700">{data.bags25kg} bao</span>
-              </div>
-            )}
-            {data.looseBagsCount && (
-              <div className="flex justify-between items-center text-xs col-span-2">
-                <span className="text-gray-500 italic">- Bao lẻ:</span>
-                <span className="font-bold text-gray-700">
-                  {data.looseBagsCount} bao ({data.looseBagsWeight || 0} kg)
-                </span>
-              </div>
-            )}
+          <div className="space-y-1.5">
+            <div className="grid grid-cols-2 gap-y-1 gap-x-4">
+              {data.bags50kg && (
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-gray-500 italic">- Bao 50kg:</span>
+                  <span className="font-bold text-gray-700">{data.bags50kg} bao</span>
+                </div>
+              )}
+              {data.bags25kg && (
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-gray-500 italic">- Bao 25kg:</span>
+                  <span className="font-bold text-gray-700">{data.bags25kg} bao</span>
+                </div>
+              )}
+              {data.looseBags?.map((bag, idx) => bag.count && (
+                <div key={bag.id} className="flex justify-between items-center text-xs">
+                  <span className="text-gray-500 italic">- Bao lẻ ({idx + 1}):</span>
+                  <span className="font-bold text-gray-700">
+                    {bag.count} bao ({bag.weight || 0} kg)
+                  </span>
+                </div>
+              ))}
+            </div>
+            
+            {/* Packaging Total Summary */}
+            <div className="flex justify-between items-center pt-2 mt-1 border-t border-gray-50 border-dashed text-[11px]">
+              <span className="text-gray-400 font-medium uppercase tracking-tighter">Tổng khối lượng bao bì:</span>
+              <span className="font-extrabold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+                {(() => {
+                  const b50 = (parseFloat(data.bags50kg as string) || 0) * 50;
+                  const b25 = (parseFloat(data.bags25kg as string) || 0) * 25;
+                  const bLoose = data.looseBags?.reduce((acc, curr) => 
+                    acc + (parseFloat(curr.count as string) || 0) * (parseFloat(curr.weight as string) || 0), 0) || 0;
+                  const total = b50 + b25 + bLoose;
+                  return `${total.toLocaleString()} kg (~ ${(total / 1000).toFixed(2)} tấn)`;
+                })()}
+              </span>
+            </div>
           </div>
         </div>
       )}
+
 
 
       {/* Grand Total */}

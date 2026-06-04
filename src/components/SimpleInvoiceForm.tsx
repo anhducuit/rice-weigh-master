@@ -16,9 +16,9 @@ export const SimpleInvoiceForm = () => {
     totalAmount: 0,
     bags50kg: '',
     bags25kg: '',
-    looseBagsCount: '',
-    looseBagsWeight: '',
+    looseBags: [{ id: crypto.randomUUID(), count: '', weight: '' }],
   });
+
 
 
   const [showPreview, setShowPreview] = useState(false);
@@ -111,9 +111,9 @@ export const SimpleInvoiceForm = () => {
               totalAmount: 0,
               bags50kg: '',
               bags25kg: '',
-              looseBagsCount: '',
-              looseBagsWeight: '',
+              looseBags: [{ id: crypto.randomUUID(), count: '', weight: '' }],
             })} className="text-muted-foreground gap-1">
+
 
               <RefreshCw className="w-4 h-4" /> Làm mới
             </Button>
@@ -194,9 +194,21 @@ export const SimpleInvoiceForm = () => {
 
             {/* Packaging Section */}
             <div className="mt-4 space-y-4 p-4 bg-muted/50 rounded-2xl border-2 border-dashed border-border">
-              <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                📦 Phần bao bì (Ghi chú)
-              </h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                  📦 Phần bao bì (Ghi chú)
+                </h3>
+                <div className="text-xs font-bold text-primary">
+                  Tổng: {(() => {
+                    const b50 = (parseFloat(formData.bags50kg as string) || 0) * 50;
+                    const b25 = (parseFloat(formData.bags25kg as string) || 0) * 25;
+                    const bLoose = formData.looseBags.reduce((acc, curr) => 
+                      acc + (parseFloat(curr.count as string) || 0) * (parseFloat(curr.weight as string) || 0), 0);
+                    const total = b50 + b25 + bLoose;
+                    return `${total.toLocaleString()} kg (~ ${(total / 1000).toFixed(2)} tấn)`;
+                  })()}
+                </div>
+              </div>
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
@@ -221,30 +233,63 @@ export const SimpleInvoiceForm = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-muted-foreground ml-1">Số bao lẻ</label>
-                  <input
-                    type="number"
-                    placeholder="0"
-                    value={formData.looseBagsCount}
-                    onChange={(e) => setFormData(prev => ({ ...prev, looseBagsCount: e.target.value }))}
-                    className="w-full h-11 px-4 text-base rounded-xl border-2 border-border bg-card focus:border-primary focus:outline-none"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-muted-foreground ml-1">Kg bao lẻ</label>
-                  <input
-                    type="number"
-                    placeholder="0"
-                    value={formData.looseBagsWeight}
-                    onChange={(e) => setFormData(prev => ({ ...prev, looseBagsWeight: e.target.value }))}
-                    className="w-full h-11 px-4 text-base rounded-xl border-2 border-border bg-card focus:border-primary focus:outline-none"
-                  />
-                </div>
+              <div className="space-y-3">
+                <label className="text-xs font-semibold text-muted-foreground ml-1 block">Bao lẻ khác:</label>
+                {formData.looseBags.map((bag, index) => (
+                  <div key={bag.id} className="flex gap-2 items-end">
+                    <div className="flex-1 space-y-1.5">
+                      <input
+                        type="number"
+                        placeholder="Số bao"
+                        value={bag.count}
+                        onChange={(e) => {
+                          const newBags = [...formData.looseBags];
+                          newBags[index].count = e.target.value;
+                          setFormData(prev => ({ ...prev, looseBags: newBags }));
+                        }}
+                        className="w-full h-11 px-4 text-base rounded-xl border-2 border-border bg-card focus:border-primary focus:outline-none"
+                      />
+                    </div>
+                    <div className="flex-1 space-y-1.5">
+                      <input
+                        type="number"
+                        placeholder="Kg/bao"
+                        value={bag.weight}
+                        onChange={(e) => {
+                          const newBags = [...formData.looseBags];
+                          newBags[index].weight = e.target.value;
+                          setFormData(prev => ({ ...prev, looseBags: newBags }));
+                        }}
+                        className="w-full h-11 px-4 text-base rounded-xl border-2 border-border bg-card focus:border-primary focus:outline-none"
+                      />
+                    </div>
+                    {formData.looseBags.length > 1 && (
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => setFormData(prev => ({ ...prev, looseBags: prev.looseBags.filter(b => b.id !== bag.id) }))}
+                        className="h-11 w-11 text-destructive hover:text-destructive hover:bg-destructive/10 rounded-xl"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setFormData(prev => ({ 
+                    ...prev, 
+                    looseBags: [...prev.looseBags, { id: crypto.randomUUID(), count: '', weight: '' }] 
+                  }))}
+                  className="w-full border-dashed rounded-xl h-10 text-xs font-bold"
+                >
+                  + Thêm bao lẻ
+                </Button>
               </div>
             </div>
           </div>
+
 
 
           <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10">
